@@ -1,0 +1,28 @@
+{
+    "State" : {
+        "emm" : {
+            "bestZCand_Mass" : "m1_m2_Mass",
+            "Zlep1_Pt" : "m1Pt",
+            "Zlep2_Pt" : "m2Pt",
+            "Wlep_Pt" : "ePt"
+        },
+        "eem" : {
+            "bestZCand_Mass" : "e1_e2_Mass",
+            "Zlep1_Pt" : "e1Pt",
+            "Zlep2_Pt" : "e2Pt",
+            "Wlep_Pt" : "mPt"
+        },
+        "eee" : {
+            "bestZCand_Mass" : "e1_e2_Mass",
+            "Zlep1_Pt" : "e1Pt",
+            "Zlep2_Pt" : "e2Pt",
+            "Wlep_Pt" : "e3Pt"
+        },
+        "mmm" : {
+            "bestZCand_Mass" : "m1_m2_Mass",
+            "Zlep1_Pt" : "m1Pt",
+            "Zlep2_Pt" : "m2Pt",
+            "Wlep_Pt" : "m3Pt"
+        }
+    }
+}
