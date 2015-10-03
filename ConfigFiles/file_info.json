@@ -6,7 +6,7 @@
         "plot_config" : "ConfigFiles/wz_powheg_config.json",
         "title" : "WZ",
         "file_paths" : {
-            "preselection" : "/hdfs/store/user/kelong/2015-10-03-wz3lnu-powheg-preselection-skim/skim-make_ntuples_cfg-008E7FBF-9218-E511-81E0-001E675A5244.root"
+            "preselection" : "/hdfs/store/user/kelong/2015-10-03-wz3lnu-powheg-preselection-skim/*"
         }
     },
     "zz4l" : {
@@ -16,17 +16,17 @@
         "plot_config" : "ConfigFiles/zz4l_powheg_config.json",
         "title" : "ZZ",
         "file_paths" : {
-            "preselection" : "/data/kelong/WZAnalysisData/Preselection/2015_09_27/ZZTo4L_13TeV_powheg_pythia8.root"
+            "preselection" : "/hdfs/store/user/kelong/2015-10-03-zz4l-preselection-skim/*"
         }
     },
-    "dym50" : {
+    "DYm50" : {
         "cross_section" : 6025,
         "Source of cross section" : "MCM",
         "DAS Name" : "",
         "title" : "Z+Jets",
-        "plot_config" : "ConfigFiles/dym50_amcnlo_config.json",
+        "plot_config" : "ConfigFiles/DYm50_amcnlo_config.json",
         "file_paths" : {
-            "preselection" : "/data/kelong/WZAnalysisData/Preselection/2015_09_28/DYJetsToLL_M-50_TuneCUETP8M1_13TeV-amcatnloFXFX-pythia8.root"
+            "preselection" : "/hdfs/store/user/kelong/2015-10-03-DYm50-preselection-skim/*"
         }
     }
 }

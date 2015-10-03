@@ -2,7 +2,7 @@
    "wz-powheg-Zlep1_Pt": {  
         "Initialize": {  
             "type": "TH1F",
-            "nbins": 100,
+            "nbins": 40,
             "xmin": 0,
             "xmax": 200
         },

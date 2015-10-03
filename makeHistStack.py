@@ -44,13 +44,17 @@ def getStacked(file_info, branch_name, cut_string, max_entries):
     hist_stack = ROOT.THStack("stack", "")
     for name, entry in file_info.iteritems():
         "Print name is %s entry is %s at plot time" % (name, entry)
-        producer = entry["histProducer"]
         config = config_object.ConfigObject(entry["plot_config"])
-        name = ''.join([name, "-", branch_name])
-        hist = config.getObject(name, entry["title"])
-        producer.setLumi(1000)    
-        producer.produce(hist, branch_name, cut_string, max_entries)
-        config.setAttributes(hist, name)
+        hist_name = ''.join([name, "-", branch_name])
+        hist = config.getObject(hist_name, entry["title"])
+        for state in ["eee", "eem", "emm", "mmm"]:
+            append = False
+            print entry["histProducer"]
+            producer = entry["histProducer"][state]
+            producer.setLumi(225.6) #In picobarns
+            producer.produce(hist, branch_name, cut_string, append)
+            append = True
+            config.setAttributes(hist, hist_name)
         hist_stack.Add(hist, "hist")
     return hist_stack
 def plotStack(hist_stack, args):
@@ -88,8 +92,10 @@ def plotStack(hist_stack, args):
 def main():
     #ROOT.gROOT.SetBatch(True)
     args = getComLineArgs()
+    states = ['eee', 'eem', 'emm', 'mmm']
     filelist = [x.strip() for x in args.files_to_plot.split(",")]
-    hist_factory = helper.getHistFactory("ConfigFiles/file_info.json", "eee", "preselection", filelist)
+    hist_factory = helper.getHistFactory("ConfigFiles/file_info.json", states, "preselection", filelist)
+    print "Hist factory is %s" % hist_factory
     branches = [x.strip() for x in args.branches.split(",")]
     cut_string = helper.getCutString(args.default_cut, args.channel, args.make_cut)
     for branch in branches:

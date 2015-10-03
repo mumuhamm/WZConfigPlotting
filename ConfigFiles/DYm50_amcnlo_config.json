@@ -1,8 +1,8 @@
 {  
-   "dym50-Zlep1_Pt": {  
+   "DYm50-Zlep1_Pt": {  
         "Initialize": {  
             "type": "TH1F",
-            "nbins": 100,
+            "nbins": 40,
             "xmin": 0,
             "xmax": 200
         },
@@ -14,7 +14,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-   "dym50-l1Eta": {  
+   "DYm50-l1Eta": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 80,
@@ -29,7 +29,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-   "dym50-l2Pt": {  
+   "DYm50-l2Pt": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 100,
@@ -44,7 +44,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-   "dym50-l2Eta": {  
+   "DYm50-l2Eta": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 80,
@@ -59,7 +59,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-   "dym50-j1Pt": {  
+   "DYm50-j1Pt": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 80,
@@ -74,7 +74,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-   "dym50-j1Eta": {  
+   "DYm50-j1Eta": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 80,
@@ -89,7 +89,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-   "dym50-j2Pt": {  
+   "DYm50-j2Pt": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 80,
@@ -104,7 +104,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-   "dym50-j2Eta": {  
+   "DYm50-j2Eta": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 80,
@@ -119,7 +119,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-   "dym50-nj": {  
+   "DYm50-nj": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 7,
@@ -134,7 +134,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-    "dym50-W1Pt": {  
+    "DYm50-W1Pt": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 100,
@@ -149,7 +149,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-  "dym50-W1mass": {  
+  "DYm50-W1mass": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 80,
@@ -165,7 +165,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-    "dym50-W2Pt": {  
+    "DYm50-W2Pt": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 100,
@@ -180,7 +180,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-    "dym50-W2mass": {  
+    "DYm50-W2mass": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 80,
@@ -196,7 +196,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-   "dym50-bestZCand_Pt": {  
+   "DYm50-bestZCand_Pt": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 100,
@@ -212,7 +212,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-  "dym50-bestZCand_Mass": {  
+  "DYm50-bestZCand_Mass": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 40,
@@ -228,7 +228,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-    "dym50-Z2Pt": {  
+    "DYm50-Z2Pt": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 100,
@@ -243,7 +243,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-    "dym50-Z2mass": {  
+    "DYm50-Z2mass": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 80,
@@ -259,7 +259,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-    "dym50-NuPt": {  
+    "DYm50-NuPt": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 50,
@@ -275,7 +275,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-    "dym50-trueZ-mass": {  
+    "DYm50-trueZ-mass": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 80,
@@ -291,7 +291,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-    "dym50-trueZ-Pt": {  
+    "DYm50-trueZ-Pt": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 100,
@@ -306,7 +306,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-    "dym50-trueW-mass": {  
+    "DYm50-trueW-mass": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 80,
@@ -322,7 +322,7 @@
             "GetYaxis().SetTitle": "Events"  
         }
     },
-    "dym50-trueW-Pt": {  
+    "DYm50-trueW-Pt": {  
         "Initialize": {  
             "type": "TH1F",
             "nbins": 100,

@@ -14,15 +14,12 @@ class WeightedHistProducer(object):
         return self.weight_info.getCrossSection()
     def setLumi(self, lumi):
         self.lumi = lumi if lumi > 0 else 1/self.event_weight
-    def loadHist(self, hist, branch_name, cut_string, max_entries, append=False):
+    def loadHist(self, hist, branch_name, cut_string, append=False):
         hist.GetDirectory().cd() 
         hist_name = "".join(["+" if append else "", hist.GetName()])
         print "name is %s" % hist_name
         old_num = hist.GetEntries()
-        num = self.histChain.Draw(branch_name + ">>" + hist_name, 
-                cut_string,
-                "",
-                max_entries if max_entries > 0 else 1000000000)
+        num = self.histChain.Draw(branch_name + ">>" + hist_name, cut_string)
         print "this time %i pass" % num
         print "Draw Comand is %s" % branch_name + ">>" + hist_name
         print "With cut string %s" % cut_string
@@ -31,15 +28,17 @@ class WeightedHistProducer(object):
                 print "Failed to append to hist"
         print hist.GetEntries()
         return num
-    def produce(self, hist, branch_name, cut_string="", max_entries=-1, append=False): 
+    def produce(self, hist, branch_name, cut_string="", append=False, max_entries=-1): 
+        if not hist.GetSumw2N():
+            hist.Sumw2()
         self.loadHist(hist,
             branch_name,
             ''.join([self.weight_branch, "*(" + cut_string + ")" if cut_string != "" else ""]),
-            max_entries,
             append
         )
         scale_factor = self.event_weight*self.lumi
         print "scale_factor is %s at first" % scale_factor
+        print "The sum of the weights is %i" % self.weight_info.getSumOfWeights()
         if self.weight_info.getSumOfWeights() == 1:
             scale_factor /= hist.GetEntries()
         print "scale_factor is %s" % scale_factor

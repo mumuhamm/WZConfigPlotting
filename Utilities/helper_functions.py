@@ -54,7 +54,7 @@ def setAliases(tree, state, aliases_json):
     aliases = UserInput.readJson(aliases_json)
     for name, value in aliases["State"][state].iteritems():
         tree.SetAlias(name, value)
-def getHistFactory(info_file, state, selection, filelist):
+def getHistFactory(info_file, states, selection, filelist):
     all_files = getFileInfo(info_file)
     file_info = {}
     for name in filelist:
@@ -64,10 +64,16 @@ def getHistFactory(info_file, state, selection, filelist):
             continue
         file_info[name] = dict(all_files[name])
         print file_info
-        weight_info = WeightInfo.WeightInfo(file_info[name]['cross_section'], 1)
-        ntuple = buildChain(file_info[name]["file_paths"][selection],
-                "%s/final/Ntuple" % state)
-        setAliases(ntuple, state, "Aliases/aliases.json")
-        histProducer = WeightedHistProducer.WeightedHistProducer(ntuple, weight_info, "GenWeight/abs(GenWeight)")  
-        file_info[name]["histProducer"] = histProducer
+        file_info[name]["histProducer"] = {}
+        for state in states:
+            metaTree = buildChain(file_info[name]["file_paths"][selection],
+                    "%s/metaInfo" % state)
+            weight_info = WeightInfo.WeightInfoProducer(metaTree, 
+                    file_info[name]['cross_section'],
+                    "summedWeights").produce()
+            ntuple = buildChain(file_info[name]["file_paths"][selection],
+                    "%s/final/Ntuple" % state)
+            setAliases(ntuple, state, "Aliases/aliases.json")
+            histProducer = WeightedHistProducer.WeightedHistProducer(ntuple, weight_info, "GenWeight")  
+            file_info[name]["histProducer"].update({state : histProducer})
     return file_info
