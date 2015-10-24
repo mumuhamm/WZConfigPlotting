@@ -5,6 +5,7 @@ import argparse
 import ROOT
 import Utilities.config_object as config_object
 import Utilities.selection as selection
+import Utilities.UserInput as UserInput
 
 def getComLineArgs():
     parser = argparse.ArgumentParser()
@@ -13,6 +14,8 @@ def getComLineArgs():
                         "Note: 'NAME' will be replaced by branch name")
     parser.add_argument("-s", "--scale", type=str, default="xsec",
                         help="Method for scalling hists")
+    parser.add_argument("-t", "--selection", type=str, required=True,
+                        help="Specificy selection level to run over")
     parser.add_argument("-r", "--make_ratio", action="store_true",
                         help="Add ratio comparison")
     parser.add_argument("--legend_left", action="store_true",
@@ -40,25 +43,45 @@ def getComLineArgs():
                         default="", help="Files to make plots from, "
                         "separated by a comma (match name in file_info.json)")
     return parser.parse_args()
-def getStacked(file_info, branch_name, cut_string, max_entries):
+def getDataHist(branch_name, cut_string):
+    states = ['eee', 'eem', 'emm', 'mmm']
+    filelist = ['data_EE_2015C', 'data_EE_2015D']#,'data_ME_2015C', 'data_ME_2015D','data_MM_2015C', 'data_MM_2015D']
+    hist_factory = helper.getHistFactory("ConfigFiles/file_info.json", states, args.selection, filelist)
+    config = config_object.ConfigObject("ConfigFiles/data_config.json")
+    hist_name = ''.join(['data', "-", branch_name])
+    hist = config.getObject(hist_name, "Data")
+    for name, entry in hist_factory.iteritems():
+        for state in states: 
+            producer = entry["histProducer"][state]
+            hist = producer.produce(hist, branch_name, cut_string, append)
+    config.setAttributes(hist, hist_name)
+    return hist
+
+def getStacked(file_info, branch_name, cut_string):
     hist_stack = ROOT.THStack("stack", "")
+    print "Hello there"
+    print "Now the hist factory is %s" % file_info
+    styles = UserInput.readJson("/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager/Styles/wz_analysis_styles.json")
     for name, entry in file_info.iteritems():
-        "Print name is %s entry is %s at plot time" % (name, entry)
-        config = config_object.ConfigObject(entry["plot_config"])
+        print "name is %s entry is %s at plot time" % (name, entry)
+        
+        config = config_object.ConfigObject(entry)
         hist_name = ''.join([name, "-", branch_name])
-        hist = config.getObject(hist_name, entry["title"])
-        for state in ["eee", "eem", "emm", "mmm"]:
-            append = False
-            print entry["histProducer"]
+        #hist = config.getObject(name, entry["title"])
+        hist = ROOT.TH1F(hist_name, hist_name, 20, 60, 120)
+        print "entry is %s" % entry
+        for state in ["eee"]:#, "eem", "emm", "mmm"]:
             producer = entry["histProducer"][state]
             producer.setLumi(225.6) #In picobarns
-            producer.produce(hist, branch_name, cut_string, append)
-            append = True
-            config.setAttributes(hist, hist_name)
+            proof_name = "-".join([name, "wz_%s#/%s/final/Ntuple" % ("Zselection", state)])
+            hist = producer.produce(hist, branch_name, cut_string, proof_name)
+        config.setAttributes(hist, styles['fill-blue'])
         hist_stack.Add(hist, "hist")
     return hist_stack
-def plotStack(hist_stack, args):
+def plotStack(hist_stack, branch_name, args):
     canvas = ROOT.TCanvas("canvas", "canvas", 800, 600) 
+    #data_hist = getDataHist(branch_name, "")#cut_string)
+    #data_hist.Draw("SAME") 
 
     hists = hist_stack.GetHists()
     hist_stack.Draw("nostack" if args.nostack else "")
@@ -68,19 +91,19 @@ def plotStack(hist_stack, args):
         hists[0].GetYaxis().GetTitle())
     hist_stack.GetXaxis().SetTitle(
         hists[0].GetXaxis().GetTitle())
-    #hist_stack.GetHistogram().SetLabelSize(0.04)
+    hist_stack.GetHistogram().SetLabelSize(0.04)
     print "The title should be %s" % hist_stack.GetHistogram().GetXaxis().GetTitle()
     
     xcoords = [.15, .55] if args.legend_left else [.50, .85]
     legend = ROOT.TLegend(xcoords[0], 0.65, xcoords[1], 0.85)
     legend.SetFillColor(0)
     histErrors = []
-    
     for hist in hists:
         legend.AddEntry(hist, hist.GetTitle(), "f")
         if not args.no_errors:
             histErrors.append(plotter.getHistErrors(hist, hist.GetLineColor()))
             histErrors[-1].Draw("E2 same")
+    #legend.AddEntry(data_hist, data_hist.GetTitle(), "l")
     legend.Draw()
     
     output_file_name = args.output_file
@@ -90,16 +113,18 @@ def plotStack(hist_stack, args):
     else:
         canvas.Print(output_file_name)
 def main():
-    #ROOT.gROOT.SetBatch(True)
     args = getComLineArgs()
-    states = ['eee', 'eem', 'emm', 'mmm']
+    ROOT.gROOT.SetBatch(True)
+    ROOT.TProof.Open('workers=12')
+    states = ['eee']#, 'eem', 'emm', 'mmm']
+    file_info = UserInput.readJson("/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager/FileInfo/montecarlo.json")
     filelist = [x.strip() for x in args.files_to_plot.split(",")]
-    hist_factory = helper.getHistFactory("ConfigFiles/file_info.json", states, "preselection", filelist)
-    print "Hist factory is %s" % hist_factory
+    hist_factory = helper.getHistFactory(file_info, states, args.selection, filelist)
     branches = [x.strip() for x in args.branches.split(",")]
     cut_string = helper.getCutString(args.default_cut, args.channel, args.make_cut)
     for branch in branches:
-        plotStack(getStacked(hist_factory, branch, cut_string, args.max_entries), args)
+        print "Branch name is %s" % branch
+        plotStack(getStacked(hist_factory, branch, cut_string), branch, args)
         
 if __name__ == "__main__":
     main()

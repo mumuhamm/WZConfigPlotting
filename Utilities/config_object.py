@@ -5,10 +5,10 @@ import json
 import array
 
 class ConfigObject:
-    def __init__(self, config_file):
-        with open(config_file) as json_file:    
-            self.data = json.load(json_file)
-                
+    def __init__(self, data):
+        #with open(config_file) as json_file:    
+            #self.data = json.load(json_file)
+        self.data = data   
     def getObject(self, object_name, title=""):
         initialize = self.data[object_name]['Initialize']
         if "TH1" in initialize['type']:
@@ -49,9 +49,8 @@ class ConfigObject:
                 accum_value = accum_value()
         return accum_value
 
-    def setAttributes(self, tObject, object_name):
+    def setAttributes(self, tObject, attributes):
         functions = []
-        attributes =  self.data[object_name]['Attributes']
         for function_call, params in attributes.iteritems():
             if not isinstance(params, list): 
                 params = [params]

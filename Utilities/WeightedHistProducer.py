@@ -2,8 +2,8 @@ import ROOT
 import WeightInfo
 
 class WeightedHistProducer(object):
-    def __init__(self, chain, weight_info, weight_branch):
-        self.histChain = chain 
+    def __init__(self, weight_info, weight_branch):
+        #self.histChain.SetProof(ROOT.gProof)
         self.weight_info = weight_info 
         self.weight_branch = weight_branch
         self.event_weight = self.weight_info.getCrossSection()/self.weight_info.getSumOfWeights()
@@ -14,40 +14,24 @@ class WeightedHistProducer(object):
         return self.weight_info.getCrossSection()
     def setLumi(self, lumi):
         self.lumi = lumi if lumi > 0 else 1/self.event_weight
-    def loadHist(self, hist, branch_name, cut_string, append=False):
-        hist.GetDirectory().cd() 
-        hist_name = "".join(["+" if append else "", hist.GetName()])
-        print "name is %s" % hist_name
-        old_num = hist.GetEntries()
-        num = self.histChain.Draw(branch_name + ">>" + hist_name, cut_string)
-        print "this time %i pass" % num
-        print "Draw Comand is %s" % branch_name + ">>" + hist_name
-        print "With cut string %s" % cut_string
-        if append:
-            if num < old_num:
-                print "Failed to append to hist"
-        print hist.GetEntries()
-        return num
-    def produce(self, hist, branch_name, cut_string="", append=False, max_entries=-1): 
-        if not hist.GetSumw2N():
-            hist.Sumw2()
-        self.loadHist(hist,
-            branch_name,
-            ''.join([self.weight_branch, "*(" + cut_string + ")" if cut_string != "" else ""]),
-            append
-        )
-        scale_factor = self.event_weight*self.lumi
-        print "scale_factor is %s at first" % scale_factor
-        print "The sum of the weights is %i" % self.weight_info.getSumOfWeights()
-        if self.weight_info.getSumOfWeights() == 1:
-            scale_factor /= hist.GetEntries()
-        print "scale_factor is %s" % scale_factor
-        hist.Scale(scale_factor)
+    def produce(self, hist, branch_name, cut_string="", proof_path=""): 
+        proof = ROOT.gProof
+        print hist
+        hist_name = hist.GetName()
+        hist_exp = "%s(%i, %i, %i)" % (hist.GetName(), hist.GetSize() - 2, hist.GetXaxis().GetXmin(), hist.GetXaxis().GetXmax())
+        print hist_exp
+        cut_string = ''.join([self.weight_branch, "*(" + cut_string + ")" if cut_string != "" else ""])
+        proof.DrawSelect(proof_path, ">>".join([branch_name, hist_exp]), cut_string, "goff")
+        hist = proof.GetOutputList().FindObject(hist_name)
+        print hist
+        hist.Sumw2()
+        hist.Scale(self.event_weight*self.lumi)
+        return hist
 # For testing
 def main():
     root_file = ROOT.TFile("/afs/cern.ch/user/k/kelong/work/DibosonMCAnalysis/ZZTo4LNu0j_5f_NLO_FXFX/MG5aMCatNLO_ZZTo4LNu0j_muMass_pythia8_TuneCUETP8M1_Ntuple.root")
     metaTree = root_file.Get("analyzeZZ/MetaData")
-    weight_info = WeightInfo.WeightInfoProducer(metaTree, "fidXSection", "fidSumWeights").produce()
+    weight_info = WeightInfo.WeightInfoProducer(metaTree, "inputXSection", "inputSumWeights").produce()
 
     ntuple =root_file.Get("analyzeZZ/Ntuple")
     histProducer = WeightedHistProducer(ntuple, weight_info, "weight")  
