@@ -57,7 +57,7 @@ def setAliases(tree, state, aliases_json):
     for name, value in aliases["State"][state].iteritems():
         tree.SetAlias(name, value)
 def getHistFactory(info_file, states, selection, filelist):
-    all_files = UserInput.readJson("/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager/FileInfo/wz_analysis/%s.json" % selection)
+    all_files = UserInput.readJson("/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager/FileInfo/WZAnalysis/%s.json" % selection)
     file_info = OrderedDict()
     for name in filelist:
         if name not in all_files.keys():

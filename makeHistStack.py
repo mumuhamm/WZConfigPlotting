@@ -61,14 +61,14 @@ def getStacked(file_info, branch_name, cut_string):
     hist_stack = ROOT.THStack("stack", "")
     print "Hello there"
     print "Now the hist factory is %s" % file_info
-    styles = UserInput.readJson("/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager/Styles/wz_analysis_styles.json")
+    styles = UserInput.readJson("/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager/Styles/styles.json")
     for name, entry in file_info.iteritems():
         print "name is %s entry is %s at plot time" % (name, entry)
         
         config = config_object.ConfigObject(entry)
         hist_name = ''.join([name, "-", branch_name])
         #hist = config.getObject(name, entry["title"])
-        hist = ROOT.TH1F(hist_name, hist_name, 20, 60, 120)
+        hist = ROOT.TH1F(hist_name, hist_name, 20, 0, 120)
         print "entry is %s" % entry
         for state in ["eee"]:#, "eem", "emm", "mmm"]:
             producer = entry["histProducer"][state]

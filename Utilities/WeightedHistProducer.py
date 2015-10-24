@@ -21,6 +21,11 @@ class WeightedHistProducer(object):
         hist_exp = "%s(%i, %i, %i)" % (hist.GetName(), hist.GetSize() - 2, hist.GetXaxis().GetXmin(), hist.GetXaxis().GetXmax())
         print hist_exp
         cut_string = ''.join([self.weight_branch, "*(" + cut_string + ")" if cut_string != "" else ""])
+        aliases = ROOT.TString()
+        proof.AddInput(ROOT.TNamed("alias:l1Pt", "e1Pt"))
+        proof.AddInput(ROOT.TNamed("alias:l2Pt", "e2Pt"))
+        proof.AddInput(ROOT.TNamed("alias:l3Pt", "e3Pt"))
+        proof.AddInput(ROOT.TNamed("PROOF_ListOfAliases", "l1Pt,l2Pt,l3Pt"))
         proof.DrawSelect(proof_path, ">>".join([branch_name, hist_exp]), cut_string, "goff")
         hist = proof.GetOutputList().FindObject(hist_name)
         print hist
