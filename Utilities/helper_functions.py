@@ -1,7 +1,6 @@
 import plot_functions as plotter
 import Utilities.WeightInfo as WeightInfo
 import Utilities.WeightedHistProducer as WeightedHistProducer
-import Utilities.HistProducer as HistProducer
 import Utilities.selection as selection
 import ROOT
 import json
@@ -57,25 +56,27 @@ def setAliases(tree, state, aliases_json):
     for name, value in aliases["State"][state].iteritems():
         tree.SetAlias(name, value)
 def getHistFactory(info_file, states, selection, filelist):
-    all_files = UserInput.readJson("/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager/FileInfo/WZAnalysis/%s.json" % selection)
-    file_info = OrderedDict()
+    dataset_info_file = "/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager/FileInfo/WZAnalysis/%s.json" % selection
+    all_files = UserInput.readJson(dataset_info_file)
+    file_info = OrderedDict() 
     for name in filelist:
+        print name
         if name not in all_files.keys():
-            print "%s is not a valid file name (must match a definition in %s)" % (name, info_file)
+            print "%s is not a valid file name (must match a definition in %s)" % (name, dataset_info_file)
             continue
         file_info[name] = dict(all_files[name])
         print file_info
         file_info[name]["histProducer"] = {}
         for state in states:
-            metaTree = buildChain(file_info[name]["file_path"],
-                    "%s/metaInfo" % state)
-            weight_info = WeightInfo.WeightInfoProducer(metaTree, 
-                    info_file[name]['cross_section'],
-                    "summedWeights").produce()
-            #setAliases(ntuple, state, "Aliases/aliases.json")
             if "data" not in name:
+                metaTree = buildChain(file_info[name]["file_path"],
+                        "%s/metaInfo" % state)
+                weight_info = WeightInfo.WeightInfoProducer(metaTree, 
+                        info_file[name]['cross_section'],
+                        "summedWeights").produce()
                 histProducer = WeightedHistProducer.WeightedHistProducer(weight_info, "GenWeight")  
             else:
-                histProducer = HistProducer.HistProducer(ntuple, "")  
+                histProducer = WeightedHistProducer.WeightedHistProducer(
+                        WeightInfo.WeightInfo(1, 1,), "")  
             file_info[name]["histProducer"].update({state : histProducer})
     return file_info

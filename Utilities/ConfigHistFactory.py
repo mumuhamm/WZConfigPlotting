@@ -6,11 +6,9 @@ class ConfigHistFactory(object):
     def __init__(self, dataset_manager_path, dataset_name, fileset):
         self.manager_path = dataset_manager_path
         self.dataset_name = dataset_name
-        self.data_info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", "data.json"]))
-        self.mc_info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", 
+        self.info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", 
             dataset_name, "%s.json" % fileset]))
-        self.mc_config = config_object.ConfigObject(self.mc_info)
-        self.data_config = config_object.ConfigObject(self.data_info)
+        self.config = config_object.ConfigObject(self.info)
         self.file_info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", "montecarlo.json"]))
         self.styles = UserInput.readJson('/'.join([self.manager_path, 
             "Styles", "styles.json"]))
@@ -35,12 +33,8 @@ class ConfigHistFactory(object):
         print ','.join(alias_list)
         proof.AddInput(ROOT.TNamed("PROOF_ListOfAliases", ','.join(alias_list)))
     def setHistAttributes(self, hist, object_name, dataset_name):
-        if "data" in dataset_name:
-            config = self.data_config 
-            info = self.data_info
-        else:
-            config = self.mc_config
-            info = self.mc_info
+        config = self.config
+        info = self.info
         plot_group = self.plot_groups[info[dataset_name]['plot_group']]
         hist.SetTitle(plot_group['Name'])
         config.setAttributes(hist, self.styles[plot_group['Style']])

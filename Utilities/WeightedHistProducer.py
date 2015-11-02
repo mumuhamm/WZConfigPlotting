@@ -3,7 +3,6 @@ import WeightInfo
 
 class WeightedHistProducer(object):
     def __init__(self, weight_info, weight_branch):
-        #self.histChain.SetProof(ROOT.gProof)
         self.weight_info = weight_info 
         self.weight_branch = weight_branch
         self.event_weight = self.weight_info.getCrossSection()/self.weight_info.getSumOfWeights()
@@ -16,12 +15,20 @@ class WeightedHistProducer(object):
         self.lumi = lumi if lumi > 0 else 1/self.event_weight
     def produce(self, draw_expr, cut_string="", proof_path=""): 
         proof = ROOT.gProof
-        cut_string = ''.join([self.weight_branch, "*(" + cut_string + ")" if cut_string != "" else ""])
-        proof.DrawSelect(proof_path, draw_expr, cut_string, "goff")
+        draw_cut = ""
+        if self.weight_branch == "":
+            draw_cut = cut_string
+        else:
+            draw_cut = ''.join([self.weight_branch, "*(" + cut_string + ")" if cut_string != "" else ""])
+        print "Draw cut is %s" % draw_cut
+        proof.DrawSelect(proof_path, draw_expr, draw_cut, "goff")
         hist_name = draw_expr.split(">>")[1].split("(")[0]
         hist = proof.GetOutputList().FindObject(hist_name)
-        print "The name is %s and the hist is" % hist_name
-        print hist
+        if not hist:
+            raise ValueError('\n'.join(["Empty histogram produced!",
+                "Proof path was %s" % proof_path,
+                "Draw expression was: %s" % draw_expr,
+                "Cut string was: %s" % cut_string]))
         hist.Sumw2()
         hist.Scale(self.event_weight*self.lumi)
         return hist
