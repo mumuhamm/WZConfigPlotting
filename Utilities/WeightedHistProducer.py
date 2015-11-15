@@ -13,7 +13,7 @@ class WeightedHistProducer(object):
         return self.weight_info.getCrossSection()
     def setLumi(self, lumi):
         self.lumi = lumi if lumi > 0 else 1/self.event_weight
-    def produce(self, draw_expr, cut_string="", proof_path=""): 
+    def produce(self, draw_expr, cut_string="", proof_path="", overflow=True): 
         proof = ROOT.gProof
         draw_cut = ""
         if self.weight_branch == "":
@@ -30,6 +30,11 @@ class WeightedHistProducer(object):
                 "Draw expression was: %s" % draw_expr,
                 "Cut string was: %s" % cut_string]))
         hist.Sumw2()
+        if overflow:
+            # Returns num bins + overflow + underflow
+            num_bins = hist.GetSize() - 2
+            add_overflow = hist.GetBinContent(num_bins) + hist.GetBinContent(num_bins + 1)
+            hist.SetBinContent(num_bins, add_overflow)
         hist.Scale(self.event_weight*self.lumi)
         return hist
 # For testing

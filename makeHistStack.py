@@ -8,6 +8,8 @@ import Utilities.config_object as config_object
 import Utilities.UserInput as UserInput
 from Utilities.ConfigHistFactory import ConfigHistFactory 
 
+states = ['eee', 'eem', 'emm', 'mmm']
+#states = ["eee"]
 def getComLineArgs():
     parser = argparse.ArgumentParser()
     parser.add_argument("-o", "--output_file", type=str, required=True,
@@ -31,7 +33,7 @@ def getComLineArgs():
                         "(useful for huge root files)")
     parser.add_argument("-m", "--make_cut", type=str, default="",
                         help="Enter a valid root cut string to apply")
-    parser.add_argument("--nostack", type=str, default="",
+    parser.add_argument("--nostack", action='store_true',
                         help="Don't stack hists")
     parser.add_argument("-d","--default_cut", type=str, default="",
                         choices=['', 'WZ', 'zMass'],
@@ -45,7 +47,6 @@ def getComLineArgs():
                         "separated by a comma (match name in file_info.json)")
     return parser.parse_args()
 def getDataHist(selection, branch_name, cut_string):
-    states = ['eee', 'eem', 'emm', 'mmm']
     file_info = UserInput.readJson("/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager/FileInfo/data.json")
     filelist = file_info.keys()
     #filelist = ["data_DoubleEG_Run2015C_05Oct2015_25ns", "data_DoubleEG_Run2015D_05Oct2015_25ns"]
@@ -75,6 +76,7 @@ def getDataHist(selection, branch_name, cut_string):
                 hist = state_hist
             else:
                 hist.Add(state_hist)
+            print "\n\nData hist has %i entries!!!\n" % hist.GetEntries()
     hist_factory.setHistAttributes(hist, branch_name, name)
     print "\n\nData hist has %i entries!!!\n" % hist.GetEntries()
     return hist
@@ -89,7 +91,7 @@ def getStacked(file_info, selection, branch_name, cut_string):
     for name, entry in file_info.iteritems():
         hist = 0
         print "name is %s entry is %s at plot time" % (name, entry)
-        for state in ["eee", "eem", "emm", "mmm"]:
+        for state in states:
             hist_factory.setProofAliases(state)
             draw_expr = hist_factory.getHistDrawExpr(branch_name, name, state)
             print draw_expr
@@ -130,17 +132,33 @@ def plotStack(selection, hist_stack, branch_name, args):
     legend = ROOT.TLegend(xcoords[0], 0.65, xcoords[1], 0.85)
     legend.SetFillColor(0)
     histErrors = []
+    hist_names = []
     for hist in hists:
-        legend.AddEntry(hist, hist.GetTitle(), "f")
+        if hist.GetTitle() not in hist_names:
+            legend.AddEntry(hist, hist.GetTitle(), "f")
+        hist_names.append(hist.GetTitle())
         if args.errors:
-            histErrors.append(plotter.getHistErrors(hist, hist.GetLineColor()))
-            histErrors[-1].Draw("E2 same")
+            error_hist = plotter.getHistErrors(hist)
+            if args.nostack:
+                error_hist.SetFillColor(hist.GetFillColor())
+                histErrors.append(error_hist)
+            else:
+                error_hist.SetFillColor(ROOT.kBlack)
+                if len(histErrors) == 0:
+                    histErrors.append(error_hist)
+                else:
+                    histErrors[0].Add(error_hist)
+    for error_hist in histErrors:
+        error_hist.SetFillStyle(3013)
+        error_hist.SetMarkerSize(0) 
+        error_hist.Draw("E2 same")
+
     legend.AddEntry(data_hist, data_hist.GetTitle(), "lp")
     legend.Draw()
     
     output_file_name = args.output_file
     if args.make_ratio:
-        split_canvas = plotter.splitCanvas(canvas, "stack", "01j FxFx", "incl")
+        split_canvas = plotter.splitCanvas(canvas, "stack", "data", "MC")
         split_canvas.Print(output_file_name)
     else:
         canvas.Print(output_file_name)
@@ -148,7 +166,6 @@ def main():
     args = getComLineArgs()
     ROOT.gROOT.SetBatch(True)
     ROOT.TProof.Open('workers=12')
-    states = ['eee', 'eem', 'emm', 'mmm']
     file_info = UserInput.readJson("/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager/FileInfo/montecarlo.json")
     filelist = [x.strip() for x in args.files_to_plot.split(",")]
     hist_factory = helper.getHistFactory(file_info, states, args.selection, filelist)

@@ -26,11 +26,11 @@ class ConfigHistFactory(object):
         return draw_expr
     def setProofAliases(self, channel):
         proof = ROOT.gProof
+        proof.ClearInput()
         alias_list = []
         for name, value in self.aliases['State'][channel].iteritems():
             alias_list.append(name)
             proof.AddInput(ROOT.TNamed("alias:%s" % name, value))
-        print ','.join(alias_list)
         proof.AddInput(ROOT.TNamed("PROOF_ListOfAliases", ','.join(alias_list)))
     def setHistAttributes(self, hist, object_name, dataset_name):
         config = self.config

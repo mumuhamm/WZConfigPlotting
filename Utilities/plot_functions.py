@@ -133,12 +133,11 @@ def readStyle(canvas) :
     canvas.UseCurrentStyle()
     style.SetIsReading(False)
     return style
-def getHistErrors(hist, color):
+def getHistErrors(hist):
     histErrors = hist.Clone()
     histErrors.SetName(hist.GetName() + "_errors")
     histErrors.SetDirectory(0)
     #histErrors.Sumw2()
-    histErrors.SetFillColor(color)
-    histErrors.SetFillStyle(3013)
-    histErrors.SetMarkerSize(0) 
+    #histErrors.SetFillStyle(3013)
+    #histErrors.SetMarkerSize(0) 
     return histErrors
