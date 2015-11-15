@@ -57,14 +57,15 @@ def getDataHist(selection, branch_name, cut_string):
         selection
     )
     print "Hist factor is %s " % hist_factory
-    hist = 0
+    bin_info = hist_factory.getHistBinInfo(branch_name)
+    hist = ROOT.TH1F("data", "Data", bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
     for name, entry in hist_info.iteritems():
+        producer = entry["histProducer"]
         print "name is %s entry is %s at plot time" % (name, entry)
         for state in states:
             hist_factory.setProofAliases(state)
             draw_expr = hist_factory.getHistDrawExpr(branch_name, name, state)
             print draw_expr
-            producer = entry["histProducer"][state]
             #producer.setLumi(-1) #In picobarns
             proof_name = "-".join([name, "WZAnalysis-%s#/%s/final/Ntuple" % (selection, state)])
             try:
@@ -72,11 +73,7 @@ def getDataHist(selection, branch_name, cut_string):
             except ValueError as error:
                 print error
                 continue
-            if not hist:
-                hist = state_hist
-            else:
-                hist.Add(state_hist)
-            print "\n\nData hist has %i entries!!!\n" % hist.GetEntries()
+            hist.Add(state_hist)
     hist_factory.setHistAttributes(hist, branch_name, name)
     print "\n\nData hist has %i entries!!!\n" % hist.GetEntries()
     return hist
@@ -90,12 +87,12 @@ def getStacked(file_info, selection, branch_name, cut_string):
     )
     for name, entry in file_info.iteritems():
         hist = 0
+        producer = entry["histProducer"]
         print "name is %s entry is %s at plot time" % (name, entry)
         for state in states:
             hist_factory.setProofAliases(state)
             draw_expr = hist_factory.getHistDrawExpr(branch_name, name, state)
             print draw_expr
-            producer = entry["histProducer"][state]
             producer.setLumi(1280.23) #In picobarns
             proof_name = "-".join([name, "WZAnalysis-%s#/%s/final/Ntuple" % (selection, state)])
             try:
@@ -114,26 +111,29 @@ def plotStack(selection, hist_stack, branch_name, args):
     canvas = ROOT.TCanvas("canvas", "canvas", 800, 600) 
     hists = hist_stack.GetHists()
     hist_stack.Draw("nostack" if args.nostack else "")
-    data_hist = getDataHist(selection, branch_name, "")#cut_string)
+    data_hist = getDataHist(selection, branch_name, "")#, cut_string)
     data_hist.Draw("e1 same") 
     if data_hist.GetMaximum() > hist_stack.GetMaximum():
         hist_stack.SetMaximum(data_hist.GetMaximum() + 5)
     else:
         hist_stack.SetMaximum(hist_stack.GetMaximum() + 5)
-    hist_stack.GetYaxis().SetTitleSize(0.040)    
-    hist_stack.GetYaxis().SetTitleOffset(1.3)    
+    hist_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
+    hist_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
+    print "Now the offset is %s" % hist_stack.GetYaxis().GetTitleOffset()
     hist_stack.GetYaxis().SetTitle( 
         hists[0].GetYaxis().GetTitle())
     hist_stack.GetXaxis().SetTitle(
         hists[0].GetXaxis().GetTitle())
     hist_stack.GetHistogram().SetLabelSize(0.04)
     
-    xcoords = [.15, .35] if args.legend_left else [.65, .85]
-    legend = ROOT.TLegend(xcoords[0], 0.65, xcoords[1], 0.85)
+    xcoords = [.15, .35] if args.legend_left else [.70, .90]
+    ycoords = [.85, .85 - 0.05*len(hists)]
+    legend = ROOT.TLegend(xcoords[0], ycoords[0], xcoords[1], ycoords[1])
     legend.SetFillColor(0)
+    legend.AddEntry(data_hist, data_hist.GetTitle(), "lp")
     histErrors = []
     hist_names = []
-    for hist in hists:
+    for hist in reversed(hists):
         if hist.GetTitle() not in hist_names:
             legend.AddEntry(hist, hist.GetTitle(), "f")
         hist_names.append(hist.GetTitle())
@@ -149,16 +149,13 @@ def plotStack(selection, hist_stack, branch_name, args):
                 else:
                     histErrors[0].Add(error_hist)
     for error_hist in histErrors:
-        error_hist.SetFillStyle(3013)
-        error_hist.SetMarkerSize(0) 
         error_hist.Draw("E2 same")
 
-    legend.AddEntry(data_hist, data_hist.GetTitle(), "lp")
     legend.Draw()
     
     output_file_name = args.output_file
     if args.make_ratio:
-        split_canvas = plotter.splitCanvas(canvas, "stack", "data", "MC")
+        split_canvas = plotter.splitCanvas(canvas, "stack", ("#Sigma MC", "Data"))
         split_canvas.Print(output_file_name)
     else:
         canvas.Print(output_file_name)

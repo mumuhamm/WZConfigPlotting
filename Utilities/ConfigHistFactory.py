@@ -24,6 +24,12 @@ class ConfigHistFactory(object):
         draw_expr = '>>'.join([object_name, hist_name])
         draw_expr += "(%i,%i,%i)" % (hist_info['nbins'], hist_info['xmin'], hist_info['xmax'])
         return draw_expr
+    def getHistBinInfo(self, object_name):
+        bin_info = {}
+        hist_info = self.plot_objects[object_name]['Initialize']
+        for key in ['nbins', 'xmin', 'xmax']:
+            bin_info.update({key : hist_info[key]})
+        return bin_info
     def setProofAliases(self, channel):
         proof = ROOT.gProof
         proof.ClearInput()

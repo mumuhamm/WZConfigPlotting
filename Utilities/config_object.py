@@ -40,13 +40,15 @@ class ConfigObject:
                 raise TypeError('reduce() of empty sequence with no initial value')
         accum_value = start
         for x in iterable:
-            evaluate = False
-            if "(" in x:
-                x = x.replace("()", "")
-                evaluate = True
-            accum_value = func(accum_value, x)
-            if evaluate:
-                accum_value = accum_value()
+            split = str(x).strip(")").split("(")
+            function_call = split[0]
+            accum_value = func(accum_value, function_call)
+            if len(split) != 1:
+                if len(split[1]) == 0:
+                    accum_value = accum_value()
+                else:
+                    func_args = split[1].split(",")
+                    accum_value = accum_value(*func_args)
         return accum_value
 
     def setAttributes(self, tObject, attributes):
@@ -68,9 +70,8 @@ class ConfigObject:
                         root_val =self.deepGetattr(ROOT, values[0])
                         root_val -= int(values[1]) 
                     else:
-                        root_val =self.deepGetattr(ROOT, expr)
+                        root_val = self.deepGetattr(ROOT, expr)
                     param = root_val
-                    
                 parsed_params.append(param)
             self.deepGetattr(tObject, function_call)(*parsed_params)
     def getHistCanvas(self, hist_name):

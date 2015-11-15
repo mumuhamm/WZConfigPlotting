@@ -54,7 +54,7 @@ def loadHist(hist, tree, branch_name, cut_string, max_entries, append=False):
     return num
 # Modified from Nick Smith, U-Wisconsin
 # https://github.com/nsmith-/ZHinvAnalysis/blob/master/splitCanvas.py
-def splitCanvas(oldcanvas, stack_name, name1, name2) :
+def splitCanvas(oldcanvas, stack_name, names, compare_data=True) :
     name = oldcanvas.GetName()
 
     canvas = ROOT.TCanvas(name+'__new', name)
@@ -75,17 +75,23 @@ def splitCanvas(oldcanvas, stack_name, name1, name2) :
     ratioPad.SetTopMargin(0.)
     
     hist_stack = stackPad.GetPrimitive(stack_name)
-    #stack = stackPad.GetPrimitive(name+'_hmcstack')
     hists = hist_stack.GetHists()
+    if len(hists) < 2:
+        print "Cannot form ratio from < 2 hists in stack."
+        return canvas
     hist1 = hists[0]
     hist2 = hists[1]
-    ratio = hist1.Clone(name+'_ratio_hist')
+    if compare_data:
+        for hist in hists[1:]:
+            hist1.Add(hist)
+        hist2 = stackPad.GetPrimitive("data")
+    ratio = hist2.Clone(name+'_ratio_hist')
     ratio.SetLineColor(ROOT.kBlack)
-    ratio.Divide(hist2)
+    ratio.Divide(hist1)
     ratio.GetXaxis().SetTitle(hist_stack.GetXaxis().GetTitle())
-    ratio.GetYaxis().SetTitle(''.join([name1, " / ", name2]))
+    ratio.GetYaxis().SetTitle(''.join([names[1], " / ", names[0]]))
     ratio.GetYaxis().CenterTitle()
-    ratio.GetYaxis().SetRangeUser(.3, 2.3)
+    ratio.GetYaxis().SetRangeUser(.4, 1.6)
     ratio.GetYaxis().SetNdivisions(305)
     ratio.GetYaxis().SetTitleSize(ratio.GetYaxis().GetTitleSize()*0.6)
     ratio.GetXaxis().SetTitleSize(ratio.GetXaxis().GetTitleSize()*0.8)
@@ -138,6 +144,6 @@ def getHistErrors(hist):
     histErrors.SetName(hist.GetName() + "_errors")
     histErrors.SetDirectory(0)
     #histErrors.Sumw2()
-    #histErrors.SetFillStyle(3013)
-    #histErrors.SetMarkerSize(0) 
+    histErrors.SetFillStyle(3013)
+    histErrors.SetMarkerSize(0) 
     return histErrors

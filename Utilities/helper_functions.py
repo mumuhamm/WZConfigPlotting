@@ -66,17 +66,15 @@ def getHistFactory(info_file, states, selection, filelist):
             continue
         file_info[name] = dict(all_files[name])
         print file_info
-        file_info[name]["histProducer"] = {}
-        for state in states:
-            if "data" not in name:
-                metaTree = buildChain(file_info[name]["file_path"],
-                        "%s/metaInfo" % state)
-                weight_info = WeightInfo.WeightInfoProducer(metaTree, 
-                        info_file[name]['cross_section'],
-                        "summedWeights").produce()
-                histProducer = WeightedHistProducer.WeightedHistProducer(weight_info, "GenWeight")  
-            else:
-                histProducer = WeightedHistProducer.WeightedHistProducer(
-                        WeightInfo.WeightInfo(1, 1,), "")  
-            file_info[name]["histProducer"].update({state : histProducer})
+        if "data" not in name:
+            metaTree = buildChain(file_info[name]["file_path"],
+                    "eee/metaInfo")
+            weight_info = WeightInfo.WeightInfoProducer(metaTree, 
+                    info_file[name]['cross_section'],
+                    "summedWeights").produce()
+            histProducer = WeightedHistProducer.WeightedHistProducer(weight_info, "GenWeight")  
+        else:
+            histProducer = WeightedHistProducer.WeightedHistProducer(
+                    WeightInfo.WeightInfo(1, 1,), "")  
+        file_info[name].update({"histProducer" : histProducer})
     return file_info
