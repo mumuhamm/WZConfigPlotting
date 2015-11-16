@@ -30,7 +30,10 @@ class ConfigObject:
     def deepGetattr(self, obj, attr):
         """Recurses through an attribute chain to get the ultimate value.
             via http://pingfive.typepad.com/blog/2010/04/deep-getattr-python-function.html"""
-        return self.evaluateNested(getattr, attr.split('.'), obj)
+        try:
+            return float(attr)
+        except ValueError:
+            return self.evaluateNested(getattr, attr.split('.'), obj)
     def evaluateNested(self, func, iterable, start=None):
         it = iter(iterable)
         if start is None:

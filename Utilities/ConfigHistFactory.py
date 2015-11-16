@@ -22,7 +22,7 @@ class ConfigHistFactory(object):
         hist_name = '-'.join([dataset_name, channel, object_name])
         hist_info = self.plot_objects[object_name]['Initialize']
         draw_expr = '>>'.join([object_name, hist_name])
-        draw_expr += "(%i,%i,%i)" % (hist_info['nbins'], hist_info['xmin'], hist_info['xmax'])
+        draw_expr += "(%i,%f,%f)" % (hist_info['nbins'], hist_info['xmin'], hist_info['xmax'])
         return draw_expr
     def getHistBinInfo(self, object_name):
         bin_info = {}

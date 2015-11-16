@@ -6,17 +6,18 @@ import ROOT
 import Utilities.config_object as config_object
 #import Utilities.selection as selection
 import Utilities.UserInput as UserInput
+import datetime
+import os
+import errno
 from Utilities.ConfigHistFactory import ConfigHistFactory 
 
 states = ['eee', 'eem', 'emm', 'mmm']
 #states = ["eee"]
 def getComLineArgs():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-o", "--output_file", type=str, required=True,
+    parser.add_argument("-o", "--output_file", type=str, default="",
                         help="Name of file to be created (type pdf/png etc.) " \
-                        "Note: 'NAME' will be replaced by branch name")
-    parser.add_argument("-s", "--scale", type=str, default="xsec",
-                        help="Method for scalling hists")
+                        "Note: Leave unspecified for auto naming")
     parser.add_argument("-t", "--selection", type=str, required=True,
                         help="Specificy selection level to run over")
     parser.add_argument("-r", "--make_ratio", action="store_true",
@@ -24,13 +25,10 @@ def getComLineArgs():
     parser.add_argument("--legend_left", action="store_true",
                         help="Put legend left or right")
     parser.add_argument("--errors", action="store_true",
-                        help="Don't plot error bands")
+                        help="Include error bands")
     parser.add_argument("-b", "--branches", type=str, required=True,
                         help="List (separate by commas) of names of branches "
                         "in root and config file to plot") 
-    parser.add_argument("-n", "--max_entries", type=int, default=-1,
-                        help="Draw only first n entries of hist "
-                        "(useful for huge root files)")
     parser.add_argument("-m", "--make_cut", type=str, default="",
                         help="Enter a valid root cut string to apply")
     parser.add_argument("--nostack", action='store_true',
@@ -107,7 +105,7 @@ def getStacked(file_info, selection, branch_name, cut_string):
             hist_factory.setHistAttributes(hist, branch_name, name)
         hist_stack.Add(hist, "hist")
     return hist_stack
-def plotStack(selection, hist_stack, branch_name, args):
+def makePlot(selection, hist_stack, branch_name, args):
     canvas = ROOT.TCanvas("canvas", "canvas", 800, 600) 
     hists = hist_stack.GetHists()
     hist_stack.Draw("nostack" if args.nostack else "")
@@ -125,42 +123,73 @@ def plotStack(selection, hist_stack, branch_name, args):
     hist_stack.GetXaxis().SetTitle(
         hists[0].GetXaxis().GetTitle())
     hist_stack.GetHistogram().SetLabelSize(0.04)
+    if args.errors:
+        histErrors = getHistErrors(hist_stack, args.nostack)
+        for error_hist in histErrors:
+            error_hist.Draw("E2 same")
+    legend = getPrettyLegend(hist_stack, data_hist, args.legend_left)
+    legend.Draw()
     
-    xcoords = [.15, .35] if args.legend_left else [.70, .90]
+    output_file_name = args.output_file
+    if args.make_ratio:
+        canvas = plotter.splitCanvas(canvas, "stack", ("#Sigma MC", "Data"))
+    return canvas
+def getHistErrors(hist_stack, separate):
+    histErrors = []
+    for hist in hist_stack.GetHists():
+        error_hist = plotter.getHistErrors(hist)
+        if separate:
+            error_hist.SetFillColor(hist.GetFillColor())
+            histErrors.append(error_hist)
+        else:
+            error_hist.SetFillColor(ROOT.kBlack)
+            if len(histErrors) == 0:
+                histErrors.append(error_hist)
+            else:
+                histErrors[0].Add(error_hist)
+    return histErrors
+def getPrettyLegend(hist_stack, data_hist, left):
+    hists = hist_stack.GetHists()
+    xcoords = [.15, .35] if left else [.70, .90]
     ycoords = [.85, .85 - 0.05*len(hists)]
     legend = ROOT.TLegend(xcoords[0], ycoords[0], xcoords[1], ycoords[1])
     legend.SetFillColor(0)
-    legend.AddEntry(data_hist, data_hist.GetTitle(), "lp")
-    histErrors = []
+    if data_hist:
+        legend.AddEntry(data_hist, data_hist.GetTitle(), "lp")
     hist_names = []
     for hist in reversed(hists):
         if hist.GetTitle() not in hist_names:
             legend.AddEntry(hist, hist.GetTitle(), "f")
         hist_names.append(hist.GetTitle())
-        if args.errors:
-            error_hist = plotter.getHistErrors(hist)
-            if args.nostack:
-                error_hist.SetFillColor(hist.GetFillColor())
-                histErrors.append(error_hist)
-            else:
-                error_hist.SetFillColor(ROOT.kBlack)
-                if len(histErrors) == 0:
-                    histErrors.append(error_hist)
-                else:
-                    histErrors[0].Add(error_hist)
-    for error_hist in histErrors:
-        error_hist.Draw("E2 same")
-
-    legend.Draw()
-    
-    output_file_name = args.output_file
-    if args.make_ratio:
-        split_canvas = plotter.splitCanvas(canvas, "stack", ("#Sigma MC", "Data"))
-        split_canvas.Print(output_file_name)
-    else:
-        canvas.Print(output_file_name)
+    return legend
+def makeDirectory(path):
+    '''
+    Make a directory, don't crash
+    '''
+    try:
+        os.makedirs(path)
+    except OSError as e:
+        if e.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else: 
+            raise
+def savePlot(canvas, branch_name, plot_path, copy_to_web, args):
+    if args.output_file != "":
+        canvas.Print(args.output_file)
+        return
+    makeDirectory(plot_path)
+    canvas.Print("/".join([plot_path, branch_name + ".pdf"]))
+    canvas.Print("/".join([plot_path, branch_name + ".root"]))
+    if copy_to_web:
+        plot_path = plot_path.replace("/data/kelong", "/afs/cern.ch/user/k/kelong/www/")
+        makeDirectory(plot_path)
+        canvas.Print("/".join([plot_path, branch_name + ".pdf"]))
 def main():
     args = getComLineArgs()
+    base_dir = "/data/kelong/WZAnalysisData/PlottingResults"
+    plot_path = "/".join([base_dir, args.selection, 
+        '{:%Y-%m-%d}'.format(datetime.datetime.today()),
+        '{:%Hh%M}'.format(datetime.datetime.today())])
     ROOT.gROOT.SetBatch(True)
     ROOT.TProof.Open('workers=12')
     file_info = UserInput.readJson("/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager/FileInfo/montecarlo.json")
@@ -170,7 +199,7 @@ def main():
     cut_string = helper.getCutString(args.default_cut, args.channel, args.make_cut)
     for branch in branches:
         print "Branch name is %s" % branch
-        plotStack(args.selection, getStacked(hist_factory, args.selection, branch, cut_string), branch, args)
-        
+        canvas = makePlot(args.selection, getStacked(hist_factory, args.selection, branch, cut_string), branch, args)
+        savePlot(canvas, branch, plot_path, True, args)
 if __name__ == "__main__":
     main()
