@@ -47,12 +47,12 @@ def getComLineArgs():
                         "separated by a comma (match name in file_info.json)")
     return parser.parse_args()
 def getDataHist(selection, branch_name, cut_string):
-    file_info = UserInput.readJson("/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager/FileInfo/data.json")
+    file_info = UserInput.readJson("/cms/kdlong/AnalysisDatasetManager/FileInfo/data.json")
     filelist = file_info.keys()
     #filelist = ["data_DoubleEG_Run2015C_05Oct2015_25ns", "data_DoubleEG_Run2015D_05Oct2015_25ns"]
     hist_info = helper.getHistFactory(file_info, states, selection, filelist)
     hist_factory = ConfigHistFactory(
-        "/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager",
+        "/cms/kdlong/AnalysisDatasetManager",
         "WZAnalysis", 
         selection
     )
@@ -81,7 +81,7 @@ def getDataHist(selection, branch_name, cut_string):
 def getStacked(file_info, selection, branch_name, cut_string):
     hist_stack = ROOT.THStack("stack", "")
     hist_factory = ConfigHistFactory(
-        "/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager",
+        "/cms/kdlong/AnalysisDatasetManager",
         "WZAnalysis", 
         selection
     )
@@ -184,13 +184,13 @@ def savePlot(canvas, branch_name, plot_path, args):
     makeDirectory(plot_path)
     canvas.Print("/".join([plot_path, branch_name + ".pdf"]))
     canvas.Print("/".join([plot_path, branch_name + ".root"]))
-    if args.copy_to_web:
-        plot_path = plot_path.replace("/data/kelong", "/afs/cern.ch/user/k/kelong/www/")
+    if copy_to_web:
+        plot_path = plot_path.replace("/nfs_scratch/kdlong", "~/public_html")
         makeDirectory(plot_path)
         canvas.Print("/".join([plot_path, branch_name + ".pdf"]))
 def main():
     args = getComLineArgs()
-    base_dir = "/data/kelong/WZAnalysisData/PlottingResults"
+    base_dir = "/nfs_scratch/kdlong/WZAnalysisData/PlottingResults"
     plot_path = "/".join([base_dir, args.selection, 
         '{:%Y-%m-%d}'.format(datetime.datetime.today()),
         '{:%Hh%M}'.format(datetime.datetime.today())])
@@ -198,6 +198,7 @@ def main():
     ROOT.dotrootImport('nsmith-/CMSPlotDecorations')
     ROOT.TProof.Open('workers=12')
     file_info = UserInput.readJson("/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager/FileInfo/montecarlo.json")
+    file_info = UserInput.readJson("/cms/kdlong/AnalysisDatasetManager/FileInfo/montecarlo.json")
     filelist = ["tt", "ttz", "ttv", "zz4l", "zg-filt", "DYm50-filt", "wz3lnu-powheg"] if args.files_to_plot == "all" else \
             [x.strip() for x in args.files_to_plot.split(",")]
     print "File list is %s" % filelist
