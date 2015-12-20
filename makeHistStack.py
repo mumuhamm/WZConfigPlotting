@@ -26,13 +26,15 @@ def getComLineArgs():
                         help="Put legend left or right")
     parser.add_argument("--errors", action="store_true",
                         help="Include error bands")
-    parser.add_argument("-b", "--branches", type=str, required=True,
+    parser.add_argument("-b", "--branches", type=str, default="all",
                         help="List (separate by commas) of names of branches "
                         "in root and config file to plot") 
     parser.add_argument("-m", "--make_cut", type=str, default="",
                         help="Enter a valid root cut string to apply")
     parser.add_argument("--nostack", action='store_true',
                         help="Don't stack hists")
+    parser.add_argument("--copy_to_web", action='store_true',
+                        help="Copy plot pdfs to website")
     parser.add_argument("-d","--default_cut", type=str, default="",
                         choices=['', 'WZ', 'zMass'],
                         help="Apply default cut string.")
@@ -41,7 +43,7 @@ def getComLineArgs():
                                  'eeee', 'eemm', 'mmmm'],
                         help="Select only one channel")
     parser.add_argument("-f", "--files_to_plot", type=str, required=False,
-                        default="", help="Files to make plots from, "
+                        default="all", help="Files to make plots from, "
                         "separated by a comma (match name in file_info.json)")
     return parser.parse_args()
 def getDataHist(selection, branch_name, cut_string):
@@ -91,7 +93,7 @@ def getStacked(file_info, selection, branch_name, cut_string):
             hist_factory.setProofAliases(state)
             draw_expr = hist_factory.getHistDrawExpr(branch_name, name, state)
             print draw_expr
-            producer.setLumi(1280.23) #In picobarns
+            producer.setLumi(1340) #In inverse picobarns
             proof_name = "-".join([name, "WZAnalysis-%s#/%s/final/Ntuple" % (selection, state)])
             try:
                 state_hist = producer.produce(draw_expr, cut_string, proof_name)
@@ -117,12 +119,13 @@ def makePlot(selection, hist_stack, branch_name, args):
         hist_stack.SetMaximum(hist_stack.GetMaximum() + 5)
     hist_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
     hist_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
-    print "Now the offset is %s" % hist_stack.GetYaxis().GetTitleOffset()
     hist_stack.GetYaxis().SetTitle( 
         hists[0].GetYaxis().GetTitle())
     hist_stack.GetXaxis().SetTitle(
         hists[0].GetXaxis().GetTitle())
     hist_stack.GetHistogram().SetLabelSize(0.04)
+    hist_stack.SetMinimum(0.0001)
+    print "Seg fault?"
     if args.errors:
         histErrors = getHistErrors(hist_stack, args.nostack)
         for error_hist in histErrors:
@@ -131,6 +134,7 @@ def makePlot(selection, hist_stack, branch_name, args):
     legend.Draw()
     
     output_file_name = args.output_file
+    ROOT.CMSlumi(canvas, 0, 11, "1.34 fb^{-1} (13 TeV)")
     if args.make_ratio:
         canvas = plotter.splitCanvas(canvas, "stack", ("#Sigma MC", "Data"))
     return canvas
@@ -151,7 +155,7 @@ def getHistErrors(hist_stack, separate):
 def getPrettyLegend(hist_stack, data_hist, left):
     hists = hist_stack.GetHists()
     xcoords = [.15, .35] if left else [.70, .90]
-    ycoords = [.85, .85 - 0.05*len(hists)]
+    ycoords = [.9, .9 - 0.05*len(hists)]
     legend = ROOT.TLegend(xcoords[0], ycoords[0], xcoords[1], ycoords[1])
     legend.SetFillColor(0)
     if data_hist:
@@ -173,14 +177,14 @@ def makeDirectory(path):
             pass
         else: 
             raise
-def savePlot(canvas, branch_name, plot_path, copy_to_web, args):
+def savePlot(canvas, branch_name, plot_path, args):
     if args.output_file != "":
         canvas.Print(args.output_file)
         return
     makeDirectory(plot_path)
     canvas.Print("/".join([plot_path, branch_name + ".pdf"]))
     canvas.Print("/".join([plot_path, branch_name + ".root"]))
-    if copy_to_web:
+    if args.copy_to_web:
         plot_path = plot_path.replace("/data/kelong", "/afs/cern.ch/user/k/kelong/www/")
         makeDirectory(plot_path)
         canvas.Print("/".join([plot_path, branch_name + ".pdf"]))
@@ -191,15 +195,19 @@ def main():
         '{:%Y-%m-%d}'.format(datetime.datetime.today()),
         '{:%Hh%M}'.format(datetime.datetime.today())])
     ROOT.gROOT.SetBatch(True)
+    ROOT.dotrootImport('nsmith-/CMSPlotDecorations')
     ROOT.TProof.Open('workers=12')
     file_info = UserInput.readJson("/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager/FileInfo/montecarlo.json")
-    filelist = [x.strip() for x in args.files_to_plot.split(",")]
+    filelist = ["tt", "ttz", "ttv", "zz4l", "zg-filt", "DYm50-filt", "wz3lnu-powheg"] if args.files_to_plot == "all" else \
+            [x.strip() for x in args.files_to_plot.split(",")]
+    print "File list is %s" % filelist
     hist_factory = helper.getHistFactory(file_info, states, args.selection, filelist)
-    branches = [x.strip() for x in args.branches.split(",")]
+    branches = UserInput.readJson("/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager/PlotObjects/WZAnalysis.json").keys() \
+        if args.branches == "all" else [x.strip() for x in args.branches.split(",")]
     cut_string = helper.getCutString(args.default_cut, args.channel, args.make_cut)
     for branch in branches:
         print "Branch name is %s" % branch
         canvas = makePlot(args.selection, getStacked(hist_factory, args.selection, branch, cut_string), branch, args)
-        savePlot(canvas, branch, plot_path, True, args)
+        savePlot(canvas, branch, plot_path, args)
 if __name__ == "__main__":
     main()

@@ -91,7 +91,7 @@ def splitCanvas(oldcanvas, stack_name, names, compare_data=True) :
     ratio.GetXaxis().SetTitle(hist_stack.GetXaxis().GetTitle())
     ratio.GetYaxis().SetTitle(''.join([names[1], " / ", names[0]]))
     ratio.GetYaxis().CenterTitle()
-    ratio.GetYaxis().SetRangeUser(.4, 1.6)
+    ratio.GetYaxis().SetRangeUser(.4, 2.1)
     ratio.GetYaxis().SetNdivisions(305)
     ratio.GetYaxis().SetTitleSize(ratio.GetYaxis().GetTitleSize()*0.6)
     ratio.GetXaxis().SetTitleSize(ratio.GetXaxis().GetTitleSize()*0.8)
