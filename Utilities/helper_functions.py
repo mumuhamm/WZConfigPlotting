@@ -71,7 +71,7 @@ def getConfigHist(config_factory, plot_group, selection, branch_name,
                 log_info += "\nNumber of events: 0.0" 
         log_info += "total number of events: %f" % hist.Integral()
         config_factory.setHistAttributes(hist, branch_name, plot_group)
-    print "\n\nHist has %i entries!!!\n" % hist.GetEntries()
+    logging.debug("Hist has %i entries" % hist.GetEntries())
     with open("testy.txt", "w") as log_file:
         log_file.write(log_info)
     return hist

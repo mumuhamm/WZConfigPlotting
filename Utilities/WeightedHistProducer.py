@@ -29,10 +29,10 @@ class WeightedHistProducer(object):
         hist = proof.GetOutputList().FindObject(hist_name)
         if not hist:
             raise ValueError('\n'.join(["Empty histogram produced!",
-                "\tProof path was %s" % proof_path,
+                "\tProof path was %s:" % proof_path,
                 "\tDraw expression was: %s" % draw_expr,
                 "\tCut string was: %s" % cut_string]))
-        hist.Sumw2()
+        if not hist.GetSumw2(): hist.Sumw2()
         if overflow:
             # Returns num bins + overflow + underflow
             num_bins = hist.GetSize() - 2

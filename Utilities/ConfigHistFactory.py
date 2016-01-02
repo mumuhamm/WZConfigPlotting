@@ -60,6 +60,8 @@ class ConfigHistFactory(object):
         return self.data_info
     def getMonteCarloInfo(self):
         return self.mc_info
+    def getListOfPlotObjects(self):
+        return self.plot_objects.keys()
 def main():
     test = ConfigHistFactory("/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager",
         "WZAnalysis", "Zselection")

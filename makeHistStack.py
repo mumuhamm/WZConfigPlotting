@@ -6,9 +6,11 @@ import ROOT
 import Utilities.config_object as config_object
 import Utilities.UserInput as UserInput
 import datetime
+import shutil
 import os
 import errno
 from Utilities.ConfigHistFactory import ConfigHistFactory 
+from Utilities.prettytable import PrettyTable
 
 states = ['eee', 'eem', 'emm', 'mmm']
 log_info = ""
@@ -30,6 +32,8 @@ def getComLineArgs():
                         "in root and config file to plot") 
     parser.add_argument("-m", "--make_cut", type=str, default="",
                         help="Enter a valid root cut string to apply")
+    parser.add_argument("-l", "--luminosity", type=float, default=1340,
+                        help="Luminsoity in pb-1. Default 1340")
     parser.add_argument("--nostack", action='store_true',
                         help="Don't stack hists")
     parser.add_argument("--no_html", action='store_true',
@@ -47,21 +51,40 @@ def getComLineArgs():
     return parser.parse_args()
 def getStacked(config_factory, selection, filelist, branch_name, luminosity, cut_string=""):
     hist_stack = ROOT.THStack("stack", "")
+    hist_info = {}
     for plot_set in filelist:
         hist = helper.getConfigHist(config_factory, plot_set, selection, branch_name, 
                 states, luminosity, cut_string)
         hist_stack.Add(hist)
+        hist_info[plot_set] = {'raw_events' : hist.GetEntries(), 
+                               'weighted_events' : hist.Integral()}
+    writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string)
     return hist_stack
+def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
+    mc_info = PrettyTable(["Plot Group", "Weighted Events", "Raw Events"])
+    weighted_events = 0
+    for plot_set, entry in hist_info.iteritems():
+        mc_info.add_row([plot_set, round(entry["weighted_events"], 2), entry["raw_events"]])
+        weighted_events += entry["weighted_events"]
+    with open("temp.txt", "w") as mc_file:
+        mc_file.write("Selection: %s" % selection)
+        mc_file.write("\nAdditional cut: %s" % "None" if cut_string == "" else cut_string)
+        mc_file.write("\nLuminosity: %0.2f fb^{-1}" % (luminosity/1000.))
+        mc_file.write("\nPlotting branch: %s\n" % branch_name)
+        mc_file.write(mc_info.get_string())
+        mc_file.write("\nTotal sum of Monte Carlo: %0.2f" % round(weighted_events, 2))
 def makePlot(config_factory, filelist, branch_name, cut_string, args):
     canvas = ROOT.TCanvas("canvas", "canvas", 800, 600) 
-    hist_stack = getStacked(config_factory, args.selection, filelist, branch_name, 1340, cut_string)
+    hist_stack = getStacked(config_factory, args.selection, filelist, branch_name, args.luminosity, cut_string)
     hists = hist_stack.GetHists()
     hist_stack.Draw("nostack hist" if args.nostack else "hist")
     if not args.no_decorations:
-        ROOT.CMSlumi(canvas, 0, 11, "%0.2f fb^{-1} (13 TeV)" % luminosity/1000.)
+        ROOT.CMSlumi(canvas, 0, 11, "%0.2f fb^{-1} (13 TeV)" % (args.luminosity/1000.))
     if not args.no_data:
         data_hist = helper.getConfigHist(config_factory, "data", args.selection, branch_name, states)
         data_hist.Draw("e1 same")
+        with open("temp.txt", "a") as events_log_file:
+            events_log_file.write("\nNumber of events in data: %i" % data_hist.Integral())
     else:
         data_hist = 0
     hist_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
@@ -76,7 +99,7 @@ def makePlot(config_factory, filelist, branch_name, cut_string, args):
         hist_stack.SetMinimum(hists[0].GetMinimum())
     else:
         new_max = 1.1*max(data_hist.GetMaximum(), hist_stack.GetMaximum()) \
-                if not args.no_data else 1.1*hist.GetMaximum()
+                if not args.no_data else 1.1*hist_stack.GetMaximum()
         hist_stack.SetMaximum(new_max)
         hist_stack.SetMinimum(0.001)
     if not args.no_errors:
@@ -130,24 +153,36 @@ def makeDirectory(path):
             pass
         else: 
             raise
-def savePlot(canvas, branch_name, plot_path, args):
+def getPlotPaths(selection):
+    if "hep.wisc.edu" in os.environ['HOSTNAME']:
+        storage_area = "/nfs_scratch/kdlong"
+        html_area = "/afs/hep.wisc.edu/home/kdlong/public_html"
+    else:
+        storage_area = "/data/kelong"
+        html_area = "/afs/cern.ch/user/k/kelong/www"
+    base_dir = "%s/WZAnalysisData/PlottingResults" % storage_area
+    plot_path = "/".join([base_dir, selection, 
+        '{:%Y-%m-%d}'.format(datetime.datetime.today()),
+        '{:%Hh%M}'.format(datetime.datetime.today())])
+    makeDirectory(plot_path)
+    makeDirectory("/".join([plot_path, "logs"]))
+    html_path = plot_path.replace(storage_area, html_area)
+    return (plot_path, html_path)
+def savePlot(canvas, plot_path, html_path, branch_name, args):
     if args.output_file != "":
         canvas.Print(args.output_file)
         return
-    makeDirectory(plot_path)
+    log_file = "/".join([plot_path, "logs", "%s_event_info.log" % branch_name])
+    shutil.move("temp.txt", log_file) 
     canvas.Print("/".join([plot_path, branch_name + ".pdf"]))
     canvas.Print("/".join([plot_path, branch_name + ".root"]))
     if not args.no_html:
-        plot_path = plot_path.replace("/nfs_scratch/kdlong", 
-            "/afs/hep.wisc.edu/home/kdlong/public_html")
-        makeDirectory(plot_path)
-        canvas.Print("/".join([plot_path, branch_name + ".pdf"]))
+        makeDirectory(html_path)
+        makeDirectory("/".join([html_path, "logs"]))
+        canvas.Print("/".join([html_path, branch_name + ".pdf"]))
+        shutil.copy(log_file, log_file.replace(plot_path, html_path))
 def main():
     args = getComLineArgs()
-    base_dir = "/nfs_scratch/kdlong/WZAnalysisData/PlottingResults"
-    plot_path = "/".join([base_dir, args.selection, 
-        '{:%Y-%m-%d}'.format(datetime.datetime.today()),
-        '{:%Hh%M}'.format(datetime.datetime.today())])
     ROOT.gROOT.SetBatch(True)
     ROOT.dotrootImport('nsmith-/CMSPlotDecorations')
     ROOT.TProof.Open('workers=12')
@@ -161,16 +196,17 @@ def main():
         "WZAnalysis", 
         args.selection
     )
-    branches = UserInput.readJson(object_file).keys() if args.branches == "all" \
+    branches = config_factory.getListOfPlotObjects() if args.branches == "all" \
             else [x.strip() for x in args.branches.split(",")]
     cut_string = args.make_cut
+    (plot_path, html_path) = getPlotPaths(args.selection)
     for branch in branches:
-        print "Branch name is %s" % branch
         canvas = makePlot(config_factory, filelist, branch, cut_string, args)
-        print canvas
-        savePlot(canvas, branch, plot_path, args)
-    global log_info
-    with open("test.txt", "w") as log_file:
-        log_file.write(log_info)
+        savePlot(canvas, plot_path, html_path, branch, args)
+        for primitive in ROOT.gPad.GetListOfPrimitives():
+            primitive.Delete()
+        for obj in ROOT.gDirectory.GetList():
+            obj.Delete()
+        del canvas
 if __name__ == "__main__":
     main()
