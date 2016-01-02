@@ -7,17 +7,18 @@ class ConfigHistFactory(object):
         self.manager_path = dataset_manager_path
         self.dataset_name = dataset_name
         self.info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", 
-            dataset_name, "%s.json" % fileset]))
+            self.dataset_name, "%s.json" % fileset]))
         self.config = config_object.ConfigObject(self.info)
-        self.file_info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", "montecarlo.json"]))
+        self.mc_info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", "montecarlo.json"]))
+        self.data_info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", "data.json"]))
         self.styles = UserInput.readJson('/'.join([self.manager_path, 
             "Styles", "styles.json"]))
         self.plot_groups = UserInput.readJson('/'.join([self.manager_path, 
-            "PlotGroups", "%s.json" % dataset_name]))
+            "PlotGroups", "%s.json" % self.dataset_name]))
         self.plot_objects = UserInput.readJson('/'.join([self.manager_path, 
-            "PlotObjects", "%s.json" % dataset_name]))
+            "PlotObjects", self.dataset_name, "%s.json" % fileset]))
         self.aliases = UserInput.readJson('/'.join([self.manager_path, 
-            "Aliases", "%s.json" % dataset_name]))
+            "Aliases", "%s.json" % self.dataset_name]))
     def getHistDrawExpr(self, object_name, dataset_name, channel):
         hist_name = '-'.join([dataset_name, channel, object_name])
         hist_info = self.plot_objects[object_name]['Initialize']
@@ -38,13 +39,26 @@ class ConfigHistFactory(object):
             alias_list.append(name)
             proof.AddInput(ROOT.TNamed("alias:%s" % name, value))
         proof.AddInput(ROOT.TNamed("PROOF_ListOfAliases", ','.join(alias_list)))
-    def setHistAttributes(self, hist, object_name, dataset_name):
+    def setHistAttributes(self, hist, object_name, plot_group):
         config = self.config
         info = self.info
-        plot_group = self.plot_groups[info[dataset_name]['plot_group']]
+        plot_group = self.plot_groups[info[dataset_name]['plot_group']] \
+                if plot_group not in self.plot_groups.keys() else self.plot_groups[plot_group]
         hist.SetTitle(plot_group['Name'])
         config.setAttributes(hist, self.styles[plot_group['Style']])
         config.setAttributes(hist, self.plot_objects[object_name]['Attributes'])
+    def getPlotGroupMembers(self, plot_group):
+        print "Plot Groups are %s" % self.plot_groups.keys()
+        if plot_group in self.plot_groups.keys():
+            return self.plot_groups[plot_group]["Members"]
+        else:
+            raise ValueError("%s is not a valid PlotGroup" % plot_group)
+    def getFileInfo(self):
+        return self.info
+    def getDataInfo(self):
+        return self.data_info
+    def getMonteCarloInfo(self):
+        return self.mc_info
 def main():
     test = ConfigHistFactory("/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager",
         "WZAnalysis", "Zselection")

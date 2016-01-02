@@ -2,6 +2,7 @@ import plot_functions as plotter
 import Utilities.WeightInfo as WeightInfo
 import Utilities.WeightedHistProducer as WeightedHistProducer
 import Utilities.selection as selection
+from Utilities.ConfigHistFactory import ConfigHistFactory 
 import ROOT
 import json
 import Utilities.UserInput as UserInput
@@ -55,26 +56,61 @@ def setAliases(tree, state, aliases_json):
     aliases = UserInput.readJson(aliases_json)
     for name, value in aliases["State"][state].iteritems():
         tree.SetAlias(name, value)
-def getHistFactory(info_file, states, selection, filelist):
-    dataset_info_file = "/afs/cern.ch/user/k/kelong/work/AnalysisDatasetManager/FileInfo/WZAnalysis/%s.json" % selection
-    all_files = UserInput.readJson(dataset_info_file)
-    file_info = OrderedDict() 
+def getHistFactory(config_factory, selection, filelist, luminosity):
+    mc_info = config_factory.getMonteCarloInfo()
+    all_files = config_factory.getFileInfo()
+    hist_factory = OrderedDict() 
     for name in filelist:
-        print name
         if name not in all_files.keys():
-            print "%s is not a valid file name (must match a definition in %s)" % (name, dataset_info_file)
+            print "%s is not a valid file name (must match a definition in FileInfo/%s.json)" % \
+                (name, selection)
             continue
-        file_info[name] = dict(all_files[name])
-        print file_info
+        hist_factory[name] = dict(all_files[name])
         if "data" not in name:
-            metaTree = buildChain(file_info[name]["file_path"],
+            metaTree = buildChain(hist_factory[name]["file_path"],
                     "eee/metaInfo")
+            kfac = 1. if 'kfactor' not in mc_info[name].keys() else mc_info[name]['kfactor']
             weight_info = WeightInfo.WeightInfoProducer(metaTree, 
-                    info_file[name]['cross_section'],
+                    mc_info[name]['cross_section']*kfac,
                     "summedWeights").produce()
             histProducer = WeightedHistProducer.WeightedHistProducer(weight_info, "GenWeight")  
+            histProducer.setLumi(luminosity)
         else:
             histProducer = WeightedHistProducer.WeightedHistProducer(
                     WeightInfo.WeightInfo(1, 1,), "")  
-        file_info[name].update({"histProducer" : histProducer})
-    return file_info
+        hist_factory[name].update({"histProducer" : histProducer})
+    return hist_factory
+def getConfigHist(config_factory, plot_group, selection, branch_name, states, luminosity=1, cut_string=""):
+    try:
+        print "Plot Group is %s" % plot_group
+        filelist = config_factory.getPlotGroupMembers(plot_group)
+    except ValueError as e:
+        print e.message
+        filelist = [plot_group]
+    hist_info = getHistFactory(config_factory, selection, filelist, luminosity)
+    bin_info = config_factory.getHistBinInfo(branch_name)
+    hist = ROOT.TH1F(plot_group, plot_group, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
+    log_info = ""
+    for name, entry in hist_info.iteritems():
+        producer = entry["histProducer"]
+        log_info += "\n" + "-"*70 +"\nName is %s entry is %s" % (name, entry)
+        for state in states:
+            log_info += "\nFor state %s" % state
+            config_factory.setProofAliases(state)
+            draw_expr = config_factory.getHistDrawExpr(branch_name, name, state)
+            print draw_expr
+            proof_name = "-".join([name, "WZAnalysis-%s#/%s/final/Ntuple" % (selection, state)])
+            try:
+                state_hist = producer.produce(draw_expr, cut_string, proof_name)
+                log_info += "\nNumber of events: %f" % state_hist.Integral()
+                hist.Add(state_hist)
+            except ValueError as error:
+                print error
+                log_info += "\nNumber of events: 0.0" 
+        log_info += "total number of events: %f" % hist.Integral()
+        config_factory.setHistAttributes(hist, branch_name, plot_group)
+    print "\n\nHist has %i entries!!!\n" % hist.GetEntries()
+    print log_info
+    with open("testy.txt", "a+") as log_file:
+        log_file.write(log_info)
+    return hist
