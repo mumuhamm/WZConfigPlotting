@@ -1,6 +1,7 @@
 import ROOT
 import UserInput
 import config_object
+import logging
 
 class ConfigHistFactory(object):
     def __init__(self, dataset_manager_path, dataset_name, fileset):
@@ -48,7 +49,7 @@ class ConfigHistFactory(object):
         config.setAttributes(hist, self.styles[plot_group['Style']])
         config.setAttributes(hist, self.plot_objects[object_name]['Attributes'])
     def getPlotGroupMembers(self, plot_group):
-        print "Plot Groups are %s" % self.plot_groups.keys()
+        logging.debug("Plot Groups are %s" % self.plot_groups.keys())
         if plot_group in self.plot_groups.keys():
             return self.plot_groups[plot_group]["Members"]
         else:

@@ -1,34 +1,37 @@
 import ROOT
 import WeightInfo
+import logging
 
 class WeightedHistProducer(object):
     def __init__(self, weight_info, weight_branch):
         self.weight_info = weight_info 
+        self.cut_string = ""
         self.weight_branch = weight_branch
         self.event_weight = self.weight_info.getCrossSection()/self.weight_info.getSumOfWeights()
         self.lumi = 1/self.event_weight
     def setWeightBranch(self, weight_branch):
         self.weight_branch = weight_branch
+    def setCutString(self, cut_string):
+        self.cut_string = cut_string
     def getCrossSection(self):
         return self.weight_info.getCrossSection()
     def setLumi(self, lumi):
         self.lumi = lumi if lumi > 0 else 1/self.event_weight
-    def produce(self, draw_expr, cut_string="", proof_path="", overflow=True): 
+    def produce(self, draw_expr, proof_path="", cut_string="", overflow=True): 
         proof = ROOT.gProof
-        draw_cut = ""
-        if self.weight_branch == "":
-            draw_cut = cut_string
-        else:
-            draw_cut = ''.join([self.weight_branch, "*(" + cut_string + ")" if cut_string != "" else ""])
-        print "Draw cut is %s" % draw_cut
+        if cut_string == "":
+            cut_string = self.cut_string
+        draw_cut = cut_string if self.weight_branch == "" else \
+            ''.join([self.weight_branch, "*(" + cut_string + ")" if cut_string != "" else ""])
+        logging.debug("Draw cut is %s" % draw_cut)
         proof.DrawSelect(proof_path, draw_expr, draw_cut, "goff")
         hist_name = draw_expr.split(">>")[1].split("(")[0]
         hist = proof.GetOutputList().FindObject(hist_name)
         if not hist:
             raise ValueError('\n'.join(["Empty histogram produced!",
-                "Proof path was %s" % proof_path,
-                "Draw expression was: %s" % draw_expr,
-                "Cut string was: %s" % cut_string]))
+                "\tProof path was %s" % proof_path,
+                "\tDraw expression was: %s" % draw_expr,
+                "\tCut string was: %s" % cut_string]))
         hist.Sumw2()
         if overflow:
             # Returns num bins + overflow + underflow

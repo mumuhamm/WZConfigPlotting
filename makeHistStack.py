@@ -34,14 +34,12 @@ def getComLineArgs():
                         help="Don't stack hists")
     parser.add_argument("--no_html", action='store_true',
                         help="Don't copy plot pdfs to website")
+    parser.add_argument("--no_data", action='store_true',
+                        help="Plot only Monte Carlo")
     parser.add_argument("--no_decorations", action='store_true',
                         help="Don't add CMS plot decorations")
-    parser.add_argument("-d","--default_cut", type=str, default="",
-                        choices=['', 'WZ', 'zMass'],
-                        help="Apply default cut string.")
     parser.add_argument("-c","--channel", type=str, default="",
-                        choices=['eee', 'eem', 'emm', 'mmm',
-                                 'eeee', 'eemm', 'mmmm'],
+                        choices=['eee', 'eem', 'emm', 'mmm'],
                         help="Select only one channel")
     parser.add_argument("-f", "--files_to_plot", type=str, required=False,
                         default="all", help="Files to make plots from, "
@@ -60,9 +58,12 @@ def makePlot(config_factory, filelist, branch_name, cut_string, args):
     hists = hist_stack.GetHists()
     hist_stack.Draw("nostack hist" if args.nostack else "hist")
     if not args.no_decorations:
-        ROOT.CMSlumi(canvas, 0, 11, "1.34 fb^{-1} (13 TeV)")
-    data_hist = helper.getConfigHist(config_factory, "data", args.selection, branch_name, states)
-    data_hist.Draw("e1 same")
+        ROOT.CMSlumi(canvas, 0, 11, "%0.2f fb^{-1} (13 TeV)" % luminosity/1000.)
+    if not args.no_data:
+        data_hist = helper.getConfigHist(config_factory, "data", args.selection, branch_name, states)
+        data_hist.Draw("e1 same")
+    else:
+        data_hist = 0
     hist_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
     hist_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
     hist_stack.GetYaxis().SetTitle(
@@ -74,7 +75,8 @@ def makePlot(config_factory, filelist, branch_name, cut_string, args):
         hist_stack.SetMaximum(hists[0].GetMaximum())
         hist_stack.SetMinimum(hists[0].GetMinimum())
     else:
-        new_max = 1.1*max(data_hist.GetMaximum(), hist_stack.GetMaximum())
+        new_max = 1.1*max(data_hist.GetMaximum(), hist_stack.GetMaximum()) \
+                if not args.no_data else 1.1*hist.GetMaximum()
         hist_stack.SetMaximum(new_max)
         hist_stack.SetMinimum(0.001)
     if not args.no_errors:
@@ -161,7 +163,7 @@ def main():
     )
     branches = UserInput.readJson(object_file).keys() if args.branches == "all" \
             else [x.strip() for x in args.branches.split(",")]
-    cut_string = helper.getCutString(args.default_cut, args.channel, args.make_cut)
+    cut_string = args.make_cut
     for branch in branches:
         print "Branch name is %s" % branch
         canvas = makePlot(config_factory, filelist, branch, cut_string, args)
