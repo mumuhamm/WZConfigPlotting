@@ -6,8 +6,6 @@ import array
 
 class ConfigObject:
     def __init__(self, data):
-        #with open(config_file) as json_file:    
-            #self.data = json.load(json_file)
         self.data = data   
     def getObject(self, object_name, title=""):
         initialize = self.data[object_name]['Initialize']

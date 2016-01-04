@@ -2,6 +2,7 @@ import ROOT
 import UserInput
 import config_object
 import logging
+import os
 
 class ConfigHistFactory(object):
     def __init__(self, dataset_manager_path, dataset_name, fileset):
@@ -16,8 +17,11 @@ class ConfigHistFactory(object):
             "Styles", "styles.json"]))
         self.plot_groups = UserInput.readJson('/'.join([self.manager_path, 
             "PlotGroups", "%s.json" % self.dataset_name]))
-        self.plot_objects = UserInput.readJson('/'.join([self.manager_path, 
-            "PlotObjects", self.dataset_name, "%s.json" % fileset]))
+        object_file = '/'.join([self.manager_path,  "PlotObjects", 
+            self.dataset_name, "%s.json" % fileset])
+        # Objects can be define by the default dataset wide file, or by specific selection files
+        if not os.path.isfile(object_file): object_file = object_file.replace("/%s" % fileset, "")
+        self.plot_objects = UserInput.readJson(object_file)
         self.aliases = UserInput.readJson('/'.join([self.manager_path, 
             "Aliases", "%s.json" % self.dataset_name]))
     def getHistDrawExpr(self, object_name, dataset_name, channel):
@@ -43,7 +47,8 @@ class ConfigHistFactory(object):
     def setHistAttributes(self, hist, object_name, plot_group):
         config = self.config
         info = self.info
-        plot_group = self.plot_groups[info[dataset_name]['plot_group']] \
+        # If not a valid plot group, try treating it as file entry
+        plot_group = self.plot_groups[info[plot_group]['plot_group']] \
                 if plot_group not in self.plot_groups.keys() else self.plot_groups[plot_group]
         hist.SetTitle(plot_group['Name'])
         config.setAttributes(hist, self.styles[plot_group['Style']])

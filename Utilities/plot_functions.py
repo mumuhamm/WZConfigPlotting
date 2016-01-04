@@ -1,6 +1,7 @@
 import ROOT
 import glob
 import os
+import logging
 
 def getHistFromFile(root_file, name_in_file, rename, path_to_hist):
     if not root_file:
@@ -76,15 +77,19 @@ def splitCanvas(oldcanvas, stack_name, names, compare_data=True) :
     
     hist_stack = stackPad.GetPrimitive(stack_name)
     hists = hist_stack.GetHists()
-    if len(hists) < 2:
-        print "Cannot form ratio from < 2 hists in stack."
+    if len(hists) < 2 and not compare_data:
+        logging.warning("Cannot form ratio from < 2 hists in stack.")
         return canvas
     hist1 = hists[0]
-    hist2 = hists[1]
     if compare_data:
         for hist in hists[1:]:
             hist1.Add(hist)
         hist2 = stackPad.GetPrimitive("data")
+        if not hist2:
+            logging.warning("No data hist found. Cannot form ratio")
+            return canvas
+    else:
+        hist2 = hists[1]
     ratio = hist2.Clone(name+'_ratio_hist')
     ratio.SetLineColor(ROOT.kBlack)
     ratio.Divide(hist1)
