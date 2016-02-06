@@ -32,7 +32,9 @@ class CutFlowEntry(object):
                 self.luminosity, 
                 self.additional_cut
         )
-        return hist.Integral()
+        events = hist.Integral()
+        hist.Delete()
+        return events
 class ManualCutFlowEntry(object):
     def setEntryValues(self, entry_name, entry_value):
         self.entries[entry_name] = entry_value
@@ -71,7 +73,6 @@ class CutFlowHistMaker(object):
         hist = ROOT.TH1F(plot_group, plot_group, nbins, 0, nbins)
         for i, entry in enumerate(self.entries):
             hist.SetBinContent(i+1, entry.getValue(plot_group))
-            #hist.GetXaxis().SetBinLabel(i+1, entry.getName())
-            #hist.GetXaxis().SetLabelSize(0.08)
+            hist.GetXaxis().SetBinLabel(i+1, entry.getName())
         self.config_factory.setHistAttributes(hist, "CutFlow", plot_group)
         return hist

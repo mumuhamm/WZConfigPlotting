@@ -55,7 +55,7 @@ def loadHist(hist, tree, branch_name, cut_string, max_entries, append=False):
     return num
 # Modified from Nick Smith, U-Wisconsin
 # https://github.com/nsmith-/ZHinvAnalysis/blob/master/splitCanvas.py
-def splitCanvas(oldcanvas, stack_name, names, compare_data=True) :
+def splitCanvas(oldcanvas, stack_name, data_name, names) :
     name = oldcanvas.GetName()
 
     canvas = ROOT.TCanvas(name+'__new', name)
@@ -77,23 +77,34 @@ def splitCanvas(oldcanvas, stack_name, names, compare_data=True) :
     
     hist_stack = stackPad.GetPrimitive(stack_name)
     hists = hist_stack.GetHists()
-    if len(hists) < 2 and not compare_data:
-        logging.warning("Cannot form ratio from < 2 hists in stack.")
-        return canvas
+    
     hist1 = hists[0]
-    if compare_data:
+    hist2 = stackPad.GetPrimitive(data_name)
+    compare_data = False
+    if not hist2:
+        if len(hists) < 2 and not compare_data:
+            logging.warning("Cannot form ratio from < 2 hists in stack.")
+            return canvas
+        hist2 = hists[1]
+    else:
+        compare_data = True
         for hist in hists[1:]:
             hist1.Add(hist)
-        hist2 = stackPad.GetPrimitive("data")
         if not hist2:
             logging.warning("No data hist found. Cannot form ratio")
             return canvas
-    else:
-        hist2 = hists[1]
     ratio = hist2.Clone(name+'_ratio_hist')
-    ratio.SetLineColor(ROOT.kBlack)
+    ratio.Sumw2()
     ratio.Divide(hist1)
-    ratio.Draw()
+    if compare_data:
+        ratio.Draw("e1")
+    else:
+        ratio.Draw()
+    if "cutflow" in stack_name:
+        for i in range(ratio.GetXaxis().GetNbins()) :
+            ratio.GetXaxis().SetBinLabel(i+1, hist_stack.GetXaxis().GetBinLabel(i+1))
+        ratio.GetXaxis().SetLabelOffset(0.025)
+        ratioPad.SetRightMargin(stackPad.GetRightMargin())
     ratio.GetXaxis().SetTitle(hist_stack.GetXaxis().GetTitle())
     ratio.GetYaxis().SetTitle(''.join([names[1], " / ", names[0]]))
     ratio.GetYaxis().CenterTitle()

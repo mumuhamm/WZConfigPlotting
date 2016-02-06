@@ -32,6 +32,8 @@ def getDefaultParser():
                         help="Plot only Monte Carlo")
     parser.add_argument("--no_decorations", action='store_true',
                         help="Don't add CMS plot decorations")
+    parser.add_argument("--logy", action='store_true',
+                        help="Use logaritmic scale on Y-axis")
     parser.add_argument("-c","--channel", type=str, default="",
                         choices=['eee', 'eem', 'emm', 'mmm'],
                         help="Select only one channel")

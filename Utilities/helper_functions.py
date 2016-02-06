@@ -9,6 +9,7 @@ import glob
 import logging
 import datetime
 import shutil
+import errno
 
 def makePlot(hist_stack, data_hist, branch_name, args):
     canvas = ROOT.TCanvas("%s_canvas" % branch_name, branch_name, 800, 600) 
@@ -40,8 +41,11 @@ def makePlot(hist_stack, data_hist, branch_name, args):
             error_hist.Draw("E2 same")
     legend = getPrettyLegend(hist_stack, data_hist, args.legend_left)
     legend.Draw()
+    if args.logy:
+        canvas.SetLogy()
     if not args.no_ratio:
-        canvas = plotter.splitCanvas(canvas, "stack", ("#Sigma MC", "Data"))
+        canvas = plotter.splitCanvas(canvas, hist_stack.GetName(), 
+                data_hist.GetName(), ("#Sigma MC", "Data"))
     return canvas
 def getHistErrors(hist_stack, separate):
     histErrors = []
@@ -59,7 +63,8 @@ def getHistErrors(hist_stack, separate):
     return histErrors
 def getPrettyLegend(hist_stack, data_hist, left):
     hists = hist_stack.GetHists()
-    xcoords = [.15, .35] if left else [.78, .93]
+    offset = ROOT.gPad.GetRightMargin() - 0.04
+    xcoords = [.15, .35] if left else [.75-offset, .90-offset]
     unique_entries = len(set([x.GetFillColor() for x in hists]))
     ycoords = [.9, .9 - 0.06*unique_entries]
     legend = ROOT.TLegend(xcoords[0], ycoords[0], xcoords[1], ycoords[1])
@@ -99,10 +104,10 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, cut_string
                     "summedWeights").produce()
             histProducer = WeightedHistProducer.WeightedHistProducer(weight_info, "GenWeight")  
             histProducer.setLumi(luminosity)
-            histProducer.setCutString(cut_string)
         else:
             histProducer = WeightedHistProducer.WeightedHistProducer(
                     WeightInfo.WeightInfo(1, 1,), "")  
+        histProducer.setCutString(cut_string)
         hist_factory[name].update({"histProducer" : histProducer})
     return hist_factory
 def getConfigHist(config_factory, plot_group, selection, branch_name, 
@@ -115,7 +120,11 @@ def getConfigHist(config_factory, plot_group, selection, branch_name,
         filelist = [plot_group]
     hist_info = getHistFactory(config_factory, selection, filelist, luminosity, cut_string)
     bin_info = config_factory.getHistBinInfo(branch_name)
-    hist = ROOT.TH1F(plot_group, plot_group, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
+    hist_name = "-".join([plot_group, selection])
+    hist = ROOT.gProof.GetOutputList().FindObject(hist_name)
+    if hist:
+        hist.Delete()
+    hist = ROOT.TH1F(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
     log_info = ""
     for name, entry in hist_info.iteritems():
         producer = entry["histProducer"]
@@ -165,10 +174,15 @@ def savePlot(canvas, plot_path, html_path, branch_name, write_log_file, args):
     canvas.Print("/".join([plot_path, branch_name + ".root"]))
     if not args.no_html:
         makeDirectory(html_path)
-        makeDirectory("/".join([html_path, "logs"]))
         canvas.Print("/".join([html_path, branch_name + ".pdf"]))
         if write_log_file:
+            makeDirectory("/".join([html_path, "logs"]))
             shutil.copy(log_file, log_file.replace(plot_path, html_path))
+    for primitive in ROOT.gPad.GetListOfPrimitives():
+        primitive.Delete()
+    for obj in ROOT.gDirectory.GetList():
+        obj.Delete()
+    del canvas
 def makeDirectory(path):
     '''
     Make a directory, don't crash

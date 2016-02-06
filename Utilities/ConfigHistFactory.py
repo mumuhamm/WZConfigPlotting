@@ -43,6 +43,9 @@ class ConfigHistFactory(object):
         for name, value in self.aliases['State'][channel].iteritems():
             alias_list.append(name)
             proof.AddInput(ROOT.TNamed("alias:%s" % name, value))
+        for name, value in self.aliases['Event'].iteritems():
+            alias_list.append(name)
+            proof.AddInput(ROOT.TNamed("alias:%s" % name, value))
         proof.AddInput(ROOT.TNamed("PROOF_ListOfAliases", ','.join(alias_list)))
     def setHistAttributes(self, hist, object_name, plot_group):
         config = self.config

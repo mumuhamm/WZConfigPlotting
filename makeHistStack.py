@@ -6,9 +6,9 @@ import ROOT
 import Utilities.config_object as config_object
 import Utilities.UserInput as UserInput
 import os
-import errno
 from Utilities.ConfigHistFactory import ConfigHistFactory 
 from Utilities.prettytable import PrettyTable
+import math
 
 states = ['eee', 'eem', 'emm', 'mmm']
 log_info = ""
@@ -24,18 +24,28 @@ def getComLineArgs():
     return parser.parse_args()
 
 def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
-    mc_info = PrettyTable(["Plot Group", "Weighted Events", "Raw Events"])
+    mc_info = PrettyTable(["Plot Group", "Weighted Events", "Error", "Raw Events"])
     weighted_events = 0
+    total_background = 0
+    background_err = 0
     for plot_set, entry in hist_info.iteritems():
-        mc_info.add_row([plot_set, round(entry["weighted_events"], 2), entry["raw_events"]])
+        mc_info.add_row([plot_set, round(entry["weighted_events"], 2), 
+            round(entry["error"],2),
+            entry["raw_events"]])
         weighted_events += entry["weighted_events"]
+        if plot_set != "wz":
+            total_background += entry["weighted_events"]
+            background_err += entry["error"]*entry["error"]
     with open("temp.txt", "w") as mc_file:
         mc_file.write("Selection: %s" % selection)
         mc_file.write("\nAdditional cut: %s" % "None" if cut_string == "" else cut_string)
         mc_file.write("\nLuminosity: %0.2f fb^{-1}" % (luminosity/1000.))
         mc_file.write("\nPlotting branch: %s\n" % branch_name)
         mc_file.write(mc_info.get_string())
-        mc_file.write("\nTotal sum of Monte Carlo: %0.2f" % round(weighted_events, 2))
+        mc_file.write("\nTotal sum of Monte Carlo: %0.2f +/- %0.2f" % (round(weighted_events, 2), 
+            round(math.sqrt(sum([x["error"]*x["error"] for x in hist_info.values()])), 2)))
+        mc_file.write("\nTotal sum of background Monte Carlo: %0.2f +/- %0.2f" % (round(total_background, 2), 
+            round(math.sqrt(background_err), 2)))
 def getStacked(config_factory, selection, filelist, branch_name, luminosity, cut_string=""):
     hist_stack = ROOT.THStack("stack", "")
     hist_info = {}
@@ -43,8 +53,11 @@ def getStacked(config_factory, selection, filelist, branch_name, luminosity, cut
         hist = helper.getConfigHist(config_factory, plot_set, selection, branch_name, 
                 states, luminosity, cut_string)
         hist_stack.Add(hist)
-        hist_info[plot_set] = {'raw_events' : hist.GetEntries(), 
-                               'weighted_events' : hist.Integral()}
+        raw_events = hist.GetEntries()
+        weighted_events = hist.Integral()
+        hist_info[plot_set] = {'raw_events' : raw_events, 
+                               'weighted_events' : weighted_events,
+                               'error' : weighted_events/math.sqrt(raw_events)}
     writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string)
     return hist_stack
 def main():
@@ -76,10 +89,5 @@ def main():
             data_hist = 0
         canvas = helper.makePlot(hist_stack, data_hist, branch_name, args)
         helper.savePlot(canvas, plot_path, html_path, branch_name, True, args)
-        for primitive in ROOT.gPad.GetListOfPrimitives():
-            primitive.Delete()
-        for obj in ROOT.gDirectory.GetList():
-            obj.Delete()
-        del canvas
 if __name__ == "__main__":
     main()
