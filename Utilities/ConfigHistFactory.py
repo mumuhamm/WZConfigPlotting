@@ -5,25 +5,28 @@ import logging
 import os
 
 class ConfigHistFactory(object):
-    def __init__(self, dataset_manager_path, dataset_name, fileset):
+    def __init__(self, dataset_manager_path, dataset_name):
         self.manager_path = dataset_manager_path
         self.dataset_name = dataset_name
-        self.info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", 
-            self.dataset_name, "%s.json" % fileset]))
+        self.info = UserInput.readJson('/'.join([self.manager_path, "FileInfo",
+            "%s.json" % self.dataset_name]))
         self.config = config_object.ConfigObject(self.info)
         self.mc_info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", "montecarlo.json"]))
         self.data_info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", "data.json"]))
         self.styles = UserInput.readJson('/'.join([self.manager_path, 
             "Styles", "styles.json"]))
+        base_name = self.dataset_name.split("/")[0]
         self.plot_groups = UserInput.readJson('/'.join([self.manager_path, 
-            "PlotGroups", "%s.json" % self.dataset_name]))
+            "PlotGroups", "%s.json" % base_name]))
         object_file = '/'.join([self.manager_path,  "PlotObjects", 
-            self.dataset_name, "%s.json" % fileset])
-        # Objects can be define by the default dataset wide file, or by specific selection files
-        if not os.path.isfile(object_file): object_file = object_file.replace("/%s" % fileset, "")
-        self.plot_objects = UserInput.readJson(object_file)
+            "%s.json" % base_name])
         self.aliases = UserInput.readJson('/'.join([self.manager_path, 
-            "Aliases", "%s.json" % self.dataset_name]))
+            "Aliases", "%s.json" % base_name]))
+        # Objects can be defined by the default dataset-wide file, 
+        # or by specific selection files
+        if not os.path.isfile(object_file): object_file = object_file.replace(
+                 self.dataset_name, base_name)
+        self.plot_objects = UserInput.readJson(object_file)
     def getHistDrawExpr(self, object_name, dataset_name, channel):
         hist_name = '-'.join([dataset_name, channel, object_name])
         hist_info = self.plot_objects[object_name]['Initialize']
@@ -40,9 +43,10 @@ class ConfigHistFactory(object):
         proof = ROOT.gProof
         proof.ClearInput()
         alias_list = []
-        for name, value in self.aliases['State'][channel].iteritems():
-            alias_list.append(name)
-            proof.AddInput(ROOT.TNamed("alias:%s" % name, value))
+        if channel != "":
+            for name, value in self.aliases['State'][channel].iteritems():
+                alias_list.append(name)
+                proof.AddInput(ROOT.TNamed("alias:%s" % name, value))
         for name, value in self.aliases['Event'].iteritems():
             alias_list.append(name)
             proof.AddInput(ROOT.TNamed("alias:%s" % name, value))

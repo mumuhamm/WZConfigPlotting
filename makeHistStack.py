@@ -10,8 +10,6 @@ from Utilities.ConfigHistFactory import ConfigHistFactory
 from Utilities.prettytable import PrettyTable
 import math
 
-states = ['eee', 'eem', 'emm', 'mmm']
-log_info = ""
 def getComLineArgs():
     parser = UserInput.getDefaultParser()
     parser.add_argument("-s", "--selection", type=str, required=True,
@@ -22,6 +20,8 @@ def getComLineArgs():
     parser.add_argument("-m", "--make_cut", type=str, default="",
                         help="Enter a valid root cut string to apply")
     return parser.parse_args()
+
+log_info = ""
 
 def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
     mc_info = PrettyTable(["Plot Group", "Weighted Events", "Error", "Raw Events"])
@@ -50,8 +50,8 @@ def getStacked(config_factory, selection, filelist, branch_name, luminosity, cut
     hist_stack = ROOT.THStack("stack", "")
     hist_info = {}
     for plot_set in filelist:
-        hist = helper.getConfigHist(config_factory, plot_set, selection, branch_name, 
-                states, luminosity, cut_string)
+        hist = helper.getConfigHist(config_factory, plot_set, selection,  
+                branch_name, luminosity, cut_string)
         hist_stack.Add(hist)
         raw_events = hist.GetEntries()
         weighted_events = hist.Integral()
@@ -71,7 +71,6 @@ def main():
         "/afs/cern.ch/user/k/kelong/work"
     config_factory = ConfigHistFactory(
         "%s/AnalysisDatasetManager" % path,
-        "WZAnalysis", 
         args.selection
     )
     branches = config_factory.getListOfPlotObjects() if args.branches == "all" \
@@ -82,7 +81,8 @@ def main():
         hist_stack = getStacked(config_factory, args.selection, filelist, 
                 branch_name, args.luminosity, cut_string)
         if not args.no_data:
-            data_hist = helper.getConfigHist(config_factory, "data", args.selection, branch_name, states)
+            data_hist = helper.getConfigHist(config_factory, "data", args.selection, 
+                    branch_name)
             with open("temp.txt", "a") as events_log_file:
                 events_log_file.write("\nNumber of events in data: %i" % data_hist.Integral())
         else:

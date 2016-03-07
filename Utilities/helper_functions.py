@@ -18,7 +18,7 @@ def makePlot(hist_stack, data_hist, branch_name, args):
     if data_hist:
         data_hist.Draw("e1 same")
     if not args.no_decorations:
-        ROOT.dotrootImport('nsmith-/CMSPlotDecorations')
+        ROOT.dotrootImport('kdlong/CMSPlotDecorations')
         ROOT.CMSlumi(canvas, 0, 11, "%0.2f fb^{-1} (13 TeV)" % (args.luminosity/1000.))
     hist_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
     hist_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
@@ -27,32 +27,34 @@ def makePlot(hist_stack, data_hist, branch_name, args):
     hist_stack.GetHistogram().GetXaxis().SetTitle(
         hists[0].GetXaxis().GetTitle())
     hist_stack.GetHistogram().SetLabelSize(0.04)
+    hist_stack.SetMinimum(hists[0].GetMinimum())
     if hist_stack.GetMaximum() < hists[0].GetMaximum():
         hist_stack.SetMaximum(hists[0].GetMaximum())
-        hist_stack.SetMinimum(hists[0].GetMinimum())
     else:
         new_max = 1.1*hist_stack.GetMaximum() if not data_hist else \
                 1.1*max(data_hist.GetMaximum(), hist_stack.GetMaximum()) 
         hist_stack.SetMaximum(new_max)
-        hist_stack.SetMinimum(0.001)
     if not args.no_errors:
         histErrors = getHistErrors(hist_stack, args.nostack)
+        print "HistErrors is %s" % histErrors
         for error_hist in histErrors:
-            error_hist.Draw("E2 same")
+            error_hist.Draw("same e2")
     legend = getPrettyLegend(hist_stack, data_hist, args.legend_left)
     legend.Draw()
     if args.logy:
         canvas.SetLogy()
     if not args.no_ratio:
         canvas = plotter.splitCanvas(canvas, hist_stack.GetName(), 
-                data_hist.GetName(), ("#Sigma MC", "Data"))
+                "" if not data_hist else data_hist.GetName(), 
+                #("#Sigma MC", "Data"))
+                ('tot.', 'Dbl.res.'))
     return canvas
 def getHistErrors(hist_stack, separate):
     histErrors = []
     for hist in hist_stack.GetHists():
         error_hist = plotter.getHistErrors(hist)
         if separate:
-            error_hist.SetFillColor(hist.GetFillColor())
+            error_hist.SetFillColor(hist.GetLineColor())
             histErrors.append(error_hist)
         else:
             error_hist.SetFillColor(ROOT.kBlack)
@@ -64,9 +66,9 @@ def getHistErrors(hist_stack, separate):
 def getPrettyLegend(hist_stack, data_hist, left):
     hists = hist_stack.GetHists()
     offset = ROOT.gPad.GetRightMargin() - 0.04
-    xcoords = [.15, .35] if left else [.75-offset, .90-offset]
+    xcoords = [.10, .5] if left else [.65-offset, .90-offset]
     unique_entries = len(set([x.GetFillColor() for x in hists]))
-    ycoords = [.9, .9 - 0.06*unique_entries]
+    ycoords = [.9, .9 - 0.2*unique_entries]
     legend = ROOT.TLegend(xcoords[0], ycoords[0], xcoords[1], ycoords[1])
     legend.SetFillColor(0)
     if data_hist:
@@ -79,6 +81,7 @@ def getPrettyLegend(hist_stack, data_hist, left):
     return legend
 def buildChain(filelist, treename):
     chain = ROOT.TChain(treename)
+    print treename
     for filename in glob.glob(filelist):
         filename = filename.strip()
         if ".root" not in filename or not os.path.isfile(filename):
@@ -86,6 +89,14 @@ def buildChain(filelist, treename):
         chain.Add(filename)
     return chain
 def getHistFactory(config_factory, selection, filelist, luminosity=1, cut_string=""):
+    if "WZAnalysis" in selection:
+        metaTree_name = "eee/metaInfo"
+        sum_weights_branch = "summedWeights"
+        weight_branch = "GenWeight"
+    else:
+        metaTree_name = "analyzeZZ/MetaData"
+        sum_weights_branch = "initSumWeights"
+        weight_branch = "weight"
     mc_info = config_factory.getMonteCarloInfo()
     all_files = config_factory.getFileInfo()
     hist_factory = OrderedDict() 
@@ -97,12 +108,12 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, cut_string
         hist_factory[name] = dict(all_files[name])
         if "data" not in name:
             metaTree = buildChain(hist_factory[name]["file_path"],
-                    "eee/metaInfo")
+                    metaTree_name)
             kfac = 1. if 'kfactor' not in mc_info[name].keys() else mc_info[name]['kfactor']
             weight_info = WeightInfo.WeightInfoProducer(metaTree, 
                     mc_info[name]['cross_section']*kfac,
-                    "summedWeights").produce()
-            histProducer = WeightedHistProducer.WeightedHistProducer(weight_info, "GenWeight")  
+                    sum_weights_branch).produce()
+            histProducer = WeightedHistProducer.WeightedHistProducer(weight_info, weight_branch)  
             histProducer.setLumi(luminosity)
         else:
             histProducer = WeightedHistProducer.WeightedHistProducer(
@@ -111,7 +122,12 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, cut_string
         hist_factory[name].update({"histProducer" : histProducer})
     return hist_factory
 def getConfigHist(config_factory, plot_group, selection, branch_name, 
-    states, luminosity=1, cut_string=""):
+    luminosity=1, cut_string=""):
+    if "WZAnalysis" in selection:
+        states = ['eee', 'eem', 'emm', 'mmm']
+        trees = ["%s/final/Ntuple" % state for state in states]
+    else:
+        trees = ["analyzeZZ/Ntuple"]
     try:
         filelist = config_factory.getPlotGroupMembers(plot_group)
     except ValueError as e:
@@ -120,21 +136,23 @@ def getConfigHist(config_factory, plot_group, selection, branch_name,
         filelist = [plot_group]
     hist_info = getHistFactory(config_factory, selection, filelist, luminosity, cut_string)
     bin_info = config_factory.getHistBinInfo(branch_name)
-    hist_name = "-".join([plot_group, selection])
+    hist_name = "-".join([plot_group, selection.replace("/", "-"), branch_name])
     hist = ROOT.gProof.GetOutputList().FindObject(hist_name)
     if hist:
         hist.Delete()
     hist = ROOT.TH1F(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
+    hist.Sumw2()
     log_info = ""
     for name, entry in hist_info.iteritems():
         producer = entry["histProducer"]
         log_info += "\n" + "-"*70 +"\nName is %s entry is %s" % (name, entry)
-        for state in states:
+        for tree in trees:
+            state = tree.split("/")[0] if "final/Ntuple" in tree else ""
             log_info += "\nFor state %s" % state
             config_factory.setProofAliases(state)
             draw_expr = config_factory.getHistDrawExpr(branch_name, name, state)
             logging.debug("Draw expression was %s" % draw_expr)
-            proof_name = "-".join([name, "WZAnalysis-%s#/%s/final/Ntuple" % (selection, state)])
+            proof_name = "-".join([name, "%s#/%s" % (selection.replace("/", "-"), tree)])
             try:
                 state_hist = producer.produce(draw_expr, proof_name)
                 log_info += "\nNumber of events: %f" % state_hist.Integral()
@@ -154,7 +172,7 @@ def getPlotPaths(selection, write_log_file):
     else:
         storage_area = "/data/kelong"
         html_area = "/afs/cern.ch/user/k/kelong/www"
-    base_dir = "%s/WZAnalysisData/PlottingResults" % storage_area
+    base_dir = "%s/DibosonAnalysisData/PlottingResults" % storage_area
     plot_path = "/".join([base_dir, selection, 
         '{:%Y-%m-%d}'.format(datetime.datetime.today()),
         '{:%Hh%M}'.format(datetime.datetime.today())])
@@ -183,6 +201,7 @@ def savePlot(canvas, plot_path, html_path, branch_name, write_log_file, args):
     for obj in ROOT.gDirectory.GetList():
         obj.Delete()
     del canvas
+    ROOT.gROOT.Reset()
 def makeDirectory(path):
     '''
     Make a directory, don't crash

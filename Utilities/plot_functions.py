@@ -2,6 +2,7 @@ import ROOT
 import glob
 import os
 import logging
+import re
 
 def getHistFromFile(root_file, name_in_file, rename, path_to_hist):
     if not root_file:
@@ -81,10 +82,11 @@ def splitCanvas(oldcanvas, stack_name, data_name, names) :
     hist1 = hists[0]
     hist2 = stackPad.GetPrimitive(data_name)
     compare_data = False
-    if not hist2:
+    if not isinstance(hist2, ROOT.TH1):
         if len(hists) < 2 and not compare_data:
             logging.warning("Cannot form ratio from < 2 hists in stack.")
             return canvas
+        print "Didn't we get to here"
         hist2 = hists[1]
     else:
         compare_data = True
@@ -94,7 +96,7 @@ def splitCanvas(oldcanvas, stack_name, data_name, names) :
             logging.warning("No data hist found. Cannot form ratio")
             return canvas
     ratio = hist2.Clone(name+'_ratio_hist')
-    ratio.Sumw2()
+    ratio.SetLineColor(ROOT.kBlack)
     ratio.Divide(hist1)
     if compare_data:
         ratio.Draw("e1")
@@ -108,7 +110,7 @@ def splitCanvas(oldcanvas, stack_name, data_name, names) :
     ratio.GetXaxis().SetTitle(hist_stack.GetXaxis().GetTitle())
     ratio.GetYaxis().SetTitle(''.join([names[1], " / ", names[0]]))
     ratio.GetYaxis().CenterTitle()
-    ratio.GetYaxis().SetRangeUser(.4, 2.1)
+    ratio.GetYaxis().SetRangeUser(0, 1.6)
     ratio.GetYaxis().SetNdivisions(305)
     ratio.GetYaxis().SetTitleSize(ratio.GetYaxis().GetTitleSize()*0.6)
     ratio.GetXaxis().SetTitleSize(ratio.GetXaxis().GetTitleSize()*0.8)
@@ -157,9 +159,10 @@ def readStyle(canvas) :
     return style
 def getHistErrors(hist):
     histErrors = hist.Clone()
+    histErrors.Sumw2()
     histErrors.SetName(hist.GetName() + "_errors")
     histErrors.SetDirectory(0)
-    #histErrors.Sumw2()
+    if not histErrors.GetSumw2(): histErrors.Sumw2()
     histErrors.SetFillStyle(3013)
     histErrors.SetMarkerSize(0) 
     return histErrors

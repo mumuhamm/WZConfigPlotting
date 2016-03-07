@@ -22,7 +22,8 @@ class WeightedHistProducer(object):
         if cut_string == "":
             cut_string = self.cut_string
         draw_cut = cut_string if self.weight_branch == "" else \
-            ''.join([self.weight_branch, "*(" + cut_string + ")" if cut_string != "" else ""])
+            ''.join([self.weight_branch, "*%s*%s*(" % (self.event_weight, self.lumi) 
+                + cut_string + ")" if cut_string != "" else ""])
         logging.debug("Draw cut is %s" % draw_cut)
         proof.DrawSelect(proof_path, draw_expr, draw_cut, "goff")
         hist_name = draw_expr.split(">>")[1].split("(")[0]
@@ -33,12 +34,12 @@ class WeightedHistProducer(object):
                 "\tDraw expression was: %s" % draw_expr,
                 "\tCut string was: %s" % cut_string]))
         if not hist.GetSumw2(): hist.Sumw2()
+        hist.Sumw2()
         if overflow:
             # Returns num bins + overflow + underflow
             num_bins = hist.GetSize() - 2
             add_overflow = hist.GetBinContent(num_bins) + hist.GetBinContent(num_bins + 1)
             hist.SetBinContent(num_bins, add_overflow)
-        hist.Scale(self.event_weight*self.lumi)
         return hist
 # For testing
 def main():
