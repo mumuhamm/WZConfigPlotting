@@ -21,7 +21,8 @@ def getDefaultParser():
     parser.add_argument("--no_errors", action="store_true",
                         help="Include error bands")
     parser.add_argument("-l", "--luminosity", type=float, default=1340,
-                        help="Luminsoity in pb-1. Default 1340")
+                        help="Luminsoity in pb-1. Default 1340. "
+                        "Set to -1 for unit normalization")
     parser.add_argument("--nostack", action='store_true',
                         help="Don't stack hists")
     parser.add_argument("-r", "--no_ratio", action="store_true",

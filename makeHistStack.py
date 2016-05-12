@@ -9,6 +9,8 @@ import os
 from Utilities.ConfigHistFactory import ConfigHistFactory 
 from Utilities.prettytable import PrettyTable
 import math
+import sys
+import datetime
 
 def getComLineArgs():
     parser = UserInput.getDefaultParser()
@@ -19,11 +21,33 @@ def getComLineArgs():
                         "in root and config file to plot") 
     parser.add_argument("-m", "--make_cut", type=str, default="",
                         help="Enter a valid root cut string to apply")
+    parser.add_argument("--ratio_text", default="",type=str, 
+                        help="Ratio text")
+    parser.add_argument("-t", "--extra_text", type=str, default="",
+                        help="Extra text to be added below (above) the legend")
+    parser.add_argument("--extra_text_above", action='store_true',
+                        help="Position extra text above the legend")
+    parser.add_argument("--folder_name", type=str, default="",
+                        help="Folder name to save plots in (default is current time)")
+    parser.add_argument("--simulation", action='store_true',
+                        help="Write 'Simulation' in CMS style text")
+    parser.add_argument("--scaleymax", type=float, default=1.0,
+                        help="Scale default ymax by this amount")
+    parser.add_argument("--scaleymin", type=float, default=1.0,
+                        help="Scale default ymin by this amount")
+    parser.add_argument("--scalelegy", type=float, default=1.0,
+                        help="Scale default legend entry size by this amount")
+    parser.add_argument("--scalexmax", type=float, default=1.0,
+                        help="Scale default xmax by this amount")
     return parser.parse_args()
 
 log_info = ""
 
 def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
+    meta_info = '-'*80 + '\n' + \
+        'Script called at %s\n' % datetime.datetime.now() + \
+        'The command was: %s\n' % ' '.join(sys.argv) + \
+        '-'*80 + '\n'
     mc_info = PrettyTable(["Plot Group", "Weighted Events", "Error", "Raw Events"])
     weighted_events = 0
     total_background = 0
@@ -37,6 +61,7 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
             total_background += entry["weighted_events"]
             background_err += entry["error"]*entry["error"]
     with open("temp.txt", "w") as mc_file:
+        mc_file.write(meta_info)
         mc_file.write("Selection: %s" % selection)
         mc_file.write("\nAdditional cut: %s" % "None" if cut_string == "" else cut_string)
         mc_file.write("\nLuminosity: %0.2f fb^{-1}" % (luminosity/1000.))
@@ -52,14 +77,37 @@ def getStacked(config_factory, selection, filelist, branch_name, luminosity, cut
     for plot_set in filelist:
         hist = helper.getConfigHist(config_factory, plot_set, selection,  
                 branch_name, luminosity, cut_string)
+        raw_events = hist.GetEntries() - 1
         hist_stack.Add(hist)
-        raw_events = hist.GetEntries()
         weighted_events = hist.Integral()
         hist_info[plot_set] = {'raw_events' : raw_events, 
                                'weighted_events' : weighted_events,
                                'error' : weighted_events/math.sqrt(raw_events)}
     writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string)
+    scale_uncertainty = False
+    if not scale_uncertainty:
+        return hist_stack
+    for plot_set in filelist:
+        expression = "MaxIf$(LHEweights," \
+            "Iteration$ < 6 || Iteration$ == 7 || Iteration$ == 9)" \
+            "/LHEweights[0]"
+        scale_hist_up = helper.getConfigHist(config_factory, plot_set, selection,  
+                branch_name + "_scaleup", luminosity, expression + 
+                ("*" + cut_string if cut_string != "" else ""))
+        expression = "MinIf$(LHEweights," \
+            "Iteration$ < 6 || Iteration$ == 7 || Iteration$ == 9)" \
+            "/LHEweights[0]"
+        scale_hist_down = helper.getConfigHist(config_factory, plot_set, selection,  
+                branch_name + "_scaledown", luminosity, "(%s)" % expression + 
+                ("*" + cut_string if cut_string != "" else ""))
+        scale_hist_up.SetLineStyle(0)
+        scale_hist_down.SetLineStyle(0)
+        scale_hist_up.SetLineWidth(1)
+        scale_hist_down.SetLineWidth(1)
+        hist_stack.Add(scale_hist_up)
+        hist_stack.Add(scale_hist_down)
     return hist_stack
+
 def main():
     args = getComLineArgs()
     ROOT.gROOT.SetBatch(True)
@@ -76,7 +124,7 @@ def main():
     branches = config_factory.getListOfPlotObjects() if args.branches == "all" \
             else [x.strip() for x in args.branches.split(",")]
     cut_string = args.make_cut
-    (plot_path, html_path) = helper.getPlotPaths(args.selection, True)
+    (plot_path, html_path) = helper.getPlotPaths(args.selection, args.folder_name, True)
     for branch_name in branches:
         hist_stack = getStacked(config_factory, args.selection, filelist, 
                 branch_name, args.luminosity, cut_string)

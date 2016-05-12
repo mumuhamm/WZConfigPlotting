@@ -28,13 +28,16 @@ class ConfigHistFactory(object):
                  self.dataset_name, base_name)
         self.plot_objects = UserInput.readJson(object_file)
     def getHistDrawExpr(self, object_name, dataset_name, channel):
-        hist_name = '-'.join([dataset_name, channel, object_name])
+        hist_name = '_'.join([x for x in [dataset_name, channel, object_name] 
+            if x != ""])
+        object_name = object_name if object_name in self.plot_objects else object_name.split("_")[0]
         hist_info = self.plot_objects[object_name]['Initialize']
         draw_expr = '>>'.join([object_name, hist_name])
         draw_expr += "(%i,%f,%f)" % (hist_info['nbins'], hist_info['xmin'], hist_info['xmax'])
         return draw_expr
     def getHistBinInfo(self, object_name):
         bin_info = {}
+        object_name = object_name if object_name in self.plot_objects else object_name.split("_")[0]
         hist_info = self.plot_objects[object_name]['Initialize']
         for key in ['nbins', 'xmin', 'xmax']:
             bin_info.update({key : hist_info[key]})
@@ -51,6 +54,13 @@ class ConfigHistFactory(object):
             alias_list.append(name)
             proof.AddInput(ROOT.TNamed("alias:%s" % name, value))
         proof.AddInput(ROOT.TNamed("PROOF_ListOfAliases", ','.join(alias_list)))
+    def hackInAliases(self, expr, channel=""):
+        if channel != "":
+            for name, value in self.aliases['State'][channel].iteritems():
+                expr = expr.replace(name, value)
+        for name, value in self.aliases['Event'].iteritems():
+            expr = expr.replace(name, value)
+        return expr
     def setHistAttributes(self, hist, object_name, plot_group):
         config = self.config
         info = self.info
@@ -59,6 +69,7 @@ class ConfigHistFactory(object):
                 if plot_group not in self.plot_groups.keys() else self.plot_groups[plot_group]
         hist.SetTitle(plot_group['Name'])
         config.setAttributes(hist, self.styles[plot_group['Style']])
+        object_name = object_name if object_name in self.plot_objects else object_name.split("_")[0]
         config.setAttributes(hist, self.plot_objects[object_name]['Attributes'])
     def getPlotGroupMembers(self, plot_group):
         logging.debug("Plot Groups are %s" % self.plot_groups.keys())
@@ -79,7 +90,6 @@ def main():
         "WZAnalysis", "Zselection")
     draw_expr = test.getHistDrawExpr("l1Pt", "wz3lnu-powheg", "eee")
     hist_name = draw_expr.split(">>")[1].split("(")[0]
-    print "Draw expression was %s hist name is %s" % (draw_expr, hist_name)
 
 if __name__ == "__main__":
     main()

@@ -56,7 +56,7 @@ def loadHist(hist, tree, branch_name, cut_string, max_entries, append=False):
     return num
 # Modified from Nick Smith, U-Wisconsin
 # https://github.com/nsmith-/ZHinvAnalysis/blob/master/splitCanvas.py
-def splitCanvas(oldcanvas, stack_name, data_name, names) :
+def splitCanvas(oldcanvas, stack_name, data_name, ratio_text) :
     name = oldcanvas.GetName()
 
     canvas = ROOT.TCanvas(name+'__new', name)
@@ -86,7 +86,6 @@ def splitCanvas(oldcanvas, stack_name, data_name, names) :
         if len(hists) < 2 and not compare_data:
             logging.warning("Cannot form ratio from < 2 hists in stack.")
             return canvas
-        print "Didn't we get to here"
         hist2 = hists[1]
     else:
         compare_data = True
@@ -97,6 +96,8 @@ def splitCanvas(oldcanvas, stack_name, data_name, names) :
             return canvas
     ratio = hist2.Clone(name+'_ratio_hist')
     ratio.SetLineColor(ROOT.kBlack)
+    ratio.SetLineStyle(1)
+    ratio.SetLineWidth(2)
     ratio.Divide(hist1)
     if compare_data:
         ratio.Draw("e1")
@@ -108,9 +109,9 @@ def splitCanvas(oldcanvas, stack_name, data_name, names) :
         ratio.GetXaxis().SetLabelOffset(0.025)
         ratioPad.SetRightMargin(stackPad.GetRightMargin())
     ratio.GetXaxis().SetTitle(hist_stack.GetXaxis().GetTitle())
-    ratio.GetYaxis().SetTitle(''.join([names[1], " / ", names[0]]))
+    ratio.GetYaxis().SetTitle(ratio_text)
     ratio.GetYaxis().CenterTitle()
-    ratio.GetYaxis().SetRangeUser(0, 1.6)
+    ratio.GetYaxis().SetRangeUser(0, 2.1)
     ratio.GetYaxis().SetNdivisions(305)
     ratio.GetYaxis().SetTitleSize(ratio.GetYaxis().GetTitleSize()*0.6)
     ratio.GetXaxis().SetTitleSize(ratio.GetXaxis().GetTitleSize()*0.8)
@@ -157,9 +158,8 @@ def readStyle(canvas) :
     canvas.UseCurrentStyle()
     style.SetIsReading(False)
     return style
-def getHistErrors(hist):
+def getHistStatErrors(hist):
     histErrors = hist.Clone()
-    histErrors.Sumw2()
     histErrors.SetName(hist.GetName() + "_errors")
     histErrors.SetDirectory(0)
     if not histErrors.GetSumw2(): histErrors.Sumw2()
