@@ -107,10 +107,10 @@ def buildChain(filelist, treename):
         chain.Add(filename)
     return chain
 def getHistFactory(config_factory, selection, filelist, luminosity=1, cut_string=""):
-    if "WZAnalysis" in selection:
-        metaTree_name = "eee/metaInfo"
+    if "Gen" not in selection:
+        metaTree_name = "metaInfo/metaInfo"
         sum_weights_branch = "summedWeights"
-        weight_branch = "GenWeight"
+        weight_branch = "genWeight"
     else:
         metaTree_name = "analyze%s/MetaData" % ("ZZ" if "ZZ" in selection else "WZ")
         sum_weights_branch = "initSumWeights"
@@ -141,9 +141,9 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, cut_string
     return hist_factory
 def getConfigHist(config_factory, plot_group, selection, branch_name, 
     luminosity=1, cut_string=""):
-    if "WZAnalysis" in selection:
+    if "Gen" not in selection:
         states = ['eee', 'eem', 'emm', 'mmm']
-        trees = ["%s/final/Ntuple" % state for state in states]
+        trees = ["%s/ntuple" % state for state in states]
     else:
         trees = ["analyze%s/Ntuple" % ("ZZ" if "ZZ" in selection else "WZ")]
     try:

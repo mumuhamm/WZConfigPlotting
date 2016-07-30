@@ -75,6 +75,7 @@ def getStacked(config_factory, selection, filelist, branch_name, luminosity, cut
     hist_stack = ROOT.THStack("stack", "")
     hist_info = {}
     for plot_set in filelist:
+        print "plot set is %s " % plot_set 
         hist = helper.getConfigHist(config_factory, plot_set, selection,  
                 branch_name, luminosity, cut_string)
         raw_events = hist.GetEntries() - 1
