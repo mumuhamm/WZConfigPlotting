@@ -19,13 +19,15 @@ class ConfigHistFactory(object):
         self.plot_groups = UserInput.readJson('/'.join([self.manager_path, 
             "PlotGroups", "%s.json" % base_name]))
         object_file = '/'.join([self.manager_path,  "PlotObjects", 
-            "%s.json" % base_name])
+            "%s.json" % self.dataset_name])
         self.aliases = UserInput.readJson('/'.join([self.manager_path, 
             "Aliases", "%s.json" % base_name]))
         # Objects can be defined by the default dataset-wide file, 
         # or by specific selection files
+        print "THE PLOT OBJECT FILE IS %s " % object_file
         if not os.path.isfile(object_file): object_file = object_file.replace(
                  self.dataset_name, base_name)
+        print "THE PLOT OBJECT FILE IS %s " % object_file
         self.plot_objects = UserInput.readJson(object_file)
     def getHistDrawExpr(self, object_name, dataset_name, channel):
         hist_name = '_'.join([x for x in [dataset_name, channel, object_name] 
@@ -60,6 +62,7 @@ class ConfigHistFactory(object):
                 expr = expr.replace(name, value)
         for name, value in self.aliases['Event'].iteritems():
             expr = expr.replace(name, value)
+        print "With aliases it's: %s" % expr
         return expr
     def setHistAttributes(self, hist, object_name, plot_group):
         config = self.config

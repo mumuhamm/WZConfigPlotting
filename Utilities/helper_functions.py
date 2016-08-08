@@ -164,7 +164,7 @@ def getConfigHist(config_factory, plot_group, selection, branch_name,
         producer = entry["histProducer"]
         log_info += "\n" + "-"*70 +"\nName is %s entry is %s" % (name, entry)
         for tree in trees:
-            state = tree.split("/")[0] if "final/Ntuple" in tree else ""
+            state = tree.split("/")[0] if "ntuple" in tree else ""
             log_info += "\nFor state %s" % state
             config_factory.setProofAliases(state)
             cut_string = config_factory.hackInAliases(cut_string)

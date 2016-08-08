@@ -7,7 +7,8 @@ class WeightedHistProducer(object):
         self.weight_info = weight_info 
         self.cut_string = ""
         self.weight_branch = weight_branch
-        self.event_weight = self.weight_info.getCrossSection()/self.weight_info.getSumOfWeights()
+        self.event_weight = self.weight_info.getCrossSection()/self.weight_info.getSumOfWeights() \
+            if self.weight_info.getSumOfWeights() > 0 else 0
         print "EVENT WEIGHT IS %0.2e" % self.event_weight
         print "Cross section is %0.2e" % self.weight_info.getCrossSection()
         print "Sum of weights is %i" % self.weight_info.getSumOfWeights()

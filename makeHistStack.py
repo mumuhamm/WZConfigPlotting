@@ -83,7 +83,8 @@ def getStacked(config_factory, selection, filelist, branch_name, luminosity, cut
         weighted_events = hist.Integral()
         hist_info[plot_set] = {'raw_events' : raw_events, 
                                'weighted_events' : weighted_events,
-                               'error' : weighted_events/math.sqrt(raw_events)}
+                               'error' : 0 if int(raw_events) <= 0 else \
+                                    weighted_events/math.sqrt(raw_events)}
     writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string)
     scale_uncertainty = False
     if not scale_uncertainty:
