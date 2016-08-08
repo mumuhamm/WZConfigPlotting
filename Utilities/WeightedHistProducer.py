@@ -19,7 +19,11 @@ class WeightedHistProducer(object):
         self.cut_string = cut_string
     def getCrossSection(self):
         return self.weight_info.getCrossSection()
-    def setLumi(self, lumi):
+    def setLumi(self, lumi, units='pb-1'):
+        if units == 'pb-1':
+            lumi *= 1000
+        elif units != 'fb-1':
+            raise ValueError("Invalid luminosity units! Options are 'pb-1' and 'fb-1'")
         self.lumi = lumi if lumi > 0 else self.weight_info.getSumOfWeights()
     def produce(self, draw_expr, proof_path="", cut_string="", overflow=True): 
         proof = ROOT.gProof

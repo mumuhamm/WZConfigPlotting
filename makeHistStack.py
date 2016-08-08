@@ -11,6 +11,7 @@ from Utilities.prettytable import PrettyTable
 import math
 import sys
 import datetime
+from Utilities.scripts import makeSimpleHtml
 
 def getComLineArgs():
     parser = UserInput.getDefaultParser()
@@ -139,5 +140,6 @@ def main():
             data_hist = 0
         canvas = helper.makePlot(hist_stack, data_hist, branch_name, args)
         helper.savePlot(canvas, plot_path, html_path, branch_name, True, args)
+        makeSimpleHtml.writeHTML(html_path, False)
 if __name__ == "__main__":
     main()

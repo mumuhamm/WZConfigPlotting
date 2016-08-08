@@ -20,7 +20,7 @@ def makePlot(hist_stack, data_hist, branch_name, args):
         data_hist.Draw("e1 same")
     if not args.no_decorations:
         ROOT.dotrootImport('kdlong/CMSPlotDecorations')
-        ROOT.CMSlumi(canvas, 0, 11, "%0.2f fb^{-1} (13 TeV)" % (args.luminosity/1000.),
+        ROOT.CMSlumi(canvas, 0, 11, "%0.2f fb^{-1} (13 TeV)" % (args.luminosity),
                 "Simulation" if args.simulation else "Preliminary")
     hist_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
     hist_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
@@ -31,7 +31,7 @@ def makePlot(hist_stack, data_hist, branch_name, args):
     hist_stack.GetHistogram().SetLabelSize(0.04)
     hist_stack.SetMinimum(hists[0].GetMinimum()*args.scaleymin)
     #if hist_stack.GetMaximum() < hists[0].GetMaximum():
-    hist_stack.SetMaximum(hists[0].GetMaximum()*args.scaleymax)
+    hist_stack.SetMaximum(hists[0].GetMaximum()*args.scaleymax*args.luminosity)
     #else:
     #    new_max = 1.1*hist_stack.GetMaximum() if not data_hist else \
     #            1.1*max(data_hist.GetMaximum(), hist_stack.GetMaximum()) 
@@ -213,6 +213,7 @@ def savePlot(canvas, plot_path, html_path, branch_name, write_log_file, args):
     if not args.no_html:
         makeDirectory(html_path)
         canvas.Print("/".join([html_path, branch_name + ".pdf"]))
+        canvas.Print("/".join([html_path, branch_name + ".png"]))
         if write_log_file:
             makeDirectory("/".join([html_path, "logs"]))
             shutil.copy(log_file, log_file.replace(plot_path, html_path))
