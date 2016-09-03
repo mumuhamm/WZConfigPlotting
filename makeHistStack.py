@@ -65,7 +65,7 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
         mc_file.write(meta_info)
         mc_file.write("Selection: %s" % selection)
         mc_file.write("\nAdditional cut: %s" % "None" if cut_string == "" else cut_string)
-        mc_file.write("\nLuminosity: %0.2f fb^{-1}" % (luminosity/1000.))
+        mc_file.write("\nLuminosity: %0.2f fb^{-1}" % (luminosity))
         mc_file.write("\nPlotting branch: %s\n" % branch_name)
         mc_file.write(mc_info.get_string())
         mc_file.write("\nTotal sum of Monte Carlo: %0.2f +/- %0.2f" % (round(weighted_events, 2), 

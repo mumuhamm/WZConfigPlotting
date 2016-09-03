@@ -13,7 +13,7 @@ import errno
 from IPython import embed
 
 def makePlot(hist_stack, data_hist, branch_name, args):
-    canvas = ROOT.TCanvas("%s_canvas" % branch_name, branch_name, 800, 600) 
+    canvas = ROOT.TCanvas("%s_canvas" % branch_name, branch_name, 1600, 1200) 
     hists = hist_stack.GetHists()
     hist_stack.Draw("nostack hist" if args.nostack else "hist")
     if data_hist:

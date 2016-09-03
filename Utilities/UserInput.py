@@ -20,8 +20,8 @@ def getDefaultParser():
                         help="Put legend left or right")
     parser.add_argument("--no_errors", action="store_true",
                         help="Include error bands")
-    parser.add_argument("-l", "--luminosity", type=float, default=1340,
-                        help="Luminsoity in pb-1. Default 1340. "
+    parser.add_argument("-l", "--luminosity", type=float, default=1,
+                        help="Luminsoity in fb-1. Default 1 fb-1. "
                         "Set to -1 for unit normalization")
     parser.add_argument("--nostack", action='store_true',
                         help="Don't stack hists")

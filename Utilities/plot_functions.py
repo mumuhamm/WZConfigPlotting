@@ -109,6 +109,9 @@ def splitCanvas(oldcanvas, stack_name, data_name, ratio_text) :
         ratio.GetXaxis().SetLabelOffset(0.025)
         ratioPad.SetRightMargin(stackPad.GetRightMargin())
     ratio.GetXaxis().SetTitle(hist_stack.GetXaxis().GetTitle())
+    hist_stack.GetXaxis().SetTitle("")
+    hist_stack.GetXaxis().SetLabelOffset(999)
+    
     ratio.GetYaxis().SetTitle(ratio_text)
     ratio.GetYaxis().CenterTitle()
     ratio.GetYaxis().SetRangeUser(0, 2.1)
