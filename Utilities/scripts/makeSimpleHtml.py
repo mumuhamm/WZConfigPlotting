@@ -12,9 +12,14 @@ def writeHTML(path, name):
         index = open('%s/index.html' % path, 'w')
         index.write('<html>\n'
             '<head>\n'
-            '    <title>{title}</title>\n'
-            '    <style type="text/css">\n'
-            '    </style>\n'
+            '  <title>{title}</title>\n'
+            '  <style type="text/css">\n'
+            '    .autoResizeImage {{\n'
+            '      max-width: 100%;\n'
+            '      height: auto;\n'
+            '      width: auto;\n'
+            '   }}\n'
+            '   </style>\n'
             '</head>\n'
             '<body>\n'.format(title=name)
         )
@@ -25,15 +30,14 @@ def writeHTML(path, name):
             file_name = image_file.strip().split('/')[-1].strip() 
             if i % 3 == 0: 
                 index.write('  <tr style="text-align: center;">\n')
-            index.write(getTableRow(image_file))
+            index.write(getTableRow(image_file.split("/")[-1]))
             if (i+1) % 3 == 0: 
                 index.write('  </tr>\n')
         index.write( '</body>\n'
                 '</html>' )
 def getTableRow(image_file):
-    print image_file
     return '''    <td style="text-align: center;">
-        <img src="{image}" class="plot" /><br/>
+        <img src="{image}" class="autoResizeImage" /><br/>
         <a href="logs/{name}_event_info.log">[log]</a> - <a href="{name}.pdf">[pdf]</a>
     </td>\n'''.format(image=image_file, name=image_file.split(".")[-2])
     
