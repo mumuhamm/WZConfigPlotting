@@ -25,7 +25,7 @@ def getDefaultParser():
                         "Set to -1 for unit normalization")
     parser.add_argument("--nostack", action='store_true',
                         help="Don't stack hists")
-    parser.add_argument("-r", "--no_ratio", action="store_true",
+    parser.add_argument("--no_ratio", action="store_true",
                         help="Do not add ratio comparison")
     parser.add_argument("--no_html", action='store_true',
                         help="Don't copy plot pdfs to website")

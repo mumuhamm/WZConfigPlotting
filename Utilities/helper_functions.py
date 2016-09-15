@@ -21,7 +21,7 @@ def makePlot(hist_stack, data_hist, branch_name, args):
     if not args.no_decorations:
         ROOT.dotrootImport('kdlong/CMSPlotDecorations')
         ROOT.CMSlumi(canvas, 0, 11, "%0.2f fb^{-1} (13 TeV)" % (args.luminosity),
-                "Simulation" if args.simulation else "Preliminary")
+                "Preliminary Simulation" if args.simulation else "Preliminary")
     hist_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
     hist_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
     hist_stack.GetYaxis().SetTitle(
@@ -69,7 +69,8 @@ def makePlot(hist_stack, data_hist, branch_name, args):
     if not args.no_ratio:
         canvas = plotter.splitCanvas(canvas, hist_stack.GetName(), 
                 "" if not data_hist else data_hist.GetName(), 
-                "Data / #Sigma MC" if data_hist else args.ratio_text
+                "Data / #Sigma MC" if data_hist else args.ratio_text,
+                args.ratio_range
         )
     return canvas
 def getHistStatErrors(hist_stack, separate):
@@ -217,10 +218,10 @@ def savePlot(canvas, plot_path, html_path, branch_name, write_log_file, args):
         if write_log_file:
             makeDirectory("/".join([html_path, "logs"]))
             shutil.copy(log_file, log_file.replace(plot_path, html_path))
-    for primitive in ROOT.gPad.GetListOfPrimitives():
-        primitive.Delete()
-    for obj in ROOT.gDirectory.GetList():
-        obj.Delete()
+    #for primitive in ROOT.gPad.GetListOfPrimitives():
+    #    primitive.Delete()
+    #for obj in ROOT.gDirectory.GetList():
+    #    obj.Delete()
     del canvas
     ROOT.gROOT.Reset()
 def makeDirectory(path):

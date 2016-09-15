@@ -56,7 +56,7 @@ def loadHist(hist, tree, branch_name, cut_string, max_entries, append=False):
     return num
 # Modified from Nick Smith, U-Wisconsin
 # https://github.com/nsmith-/ZHinvAnalysis/blob/master/splitCanvas.py
-def splitCanvas(oldcanvas, stack_name, data_name, ratio_text) :
+def splitCanvas(oldcanvas, stack_name, data_name, ratio_text, ratio_range) :
     name = oldcanvas.GetName()
 
     canvas = ROOT.TCanvas(name+'__new', name)
@@ -114,7 +114,7 @@ def splitCanvas(oldcanvas, stack_name, data_name, ratio_text) :
     
     ratio.GetYaxis().SetTitle(ratio_text)
     ratio.GetYaxis().CenterTitle()
-    ratio.GetYaxis().SetRangeUser(0, 2.1)
+    ratio.GetYaxis().SetRangeUser(float(ratio_range[0]), float(ratio_range[1]))
     ratio.GetYaxis().SetNdivisions(305)
     ratio.GetYaxis().SetTitleSize(ratio.GetYaxis().GetTitleSize()*0.6)
     ratio.GetXaxis().SetTitleSize(ratio.GetXaxis().GetTitleSize()*0.8)

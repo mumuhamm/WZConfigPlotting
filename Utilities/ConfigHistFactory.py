@@ -5,7 +5,7 @@ import logging
 import os
 
 class ConfigHistFactory(object):
-    def __init__(self, dataset_manager_path, dataset_name):
+    def __init__(self, dataset_manager_path, dataset_name, object_restrict=""):
         self.manager_path = dataset_manager_path
         self.dataset_name = dataset_name
         self.info = UserInput.readJson('/'.join([self.manager_path, "FileInfo",
@@ -19,7 +19,8 @@ class ConfigHistFactory(object):
         self.plot_groups = UserInput.readJson('/'.join([self.manager_path, 
             "PlotGroups", "%s.json" % base_name]))
         object_file = '/'.join([self.manager_path,  "PlotObjects", 
-            "%s.json" % self.dataset_name])
+            ("_".join([self.dataset_name, object_restrict])
+                if object_restrict != "" else self.dataset_name) + ".json"])
         self.aliases = UserInput.readJson('/'.join([self.manager_path, 
             "Aliases", "%s.json" % base_name]))
         # Objects can be defined by the default dataset-wide file, 

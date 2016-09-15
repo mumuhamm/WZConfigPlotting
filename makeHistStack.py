@@ -17,6 +17,8 @@ def getComLineArgs():
     parser = UserInput.getDefaultParser()
     parser.add_argument("-s", "--selection", type=str, required=True,
                         help="Specificy selection level to run over")
+    parser.add_argument("-r", "--object_restrict", type=str, default="",
+                        help="Use modified object file")
     parser.add_argument("-b", "--branches", type=str, default="all",
                         help="List (separate by commas) of names of branches "
                         "in root and config file to plot") 
@@ -38,6 +40,8 @@ def getComLineArgs():
                         help="Scale default ymin by this amount")
     parser.add_argument("--scalelegy", type=float, default=1.0,
                         help="Scale default legend entry size by this amount")
+    parser.add_argument("--ratio_range", nargs=2, default=[0,2.1],
+                        help="Ratio min ratio max (default 0 2.1)")
     parser.add_argument("--scalexmax", type=float, default=1.0,
                         help="Scale default xmax by this amount")
     return parser.parse_args()
@@ -122,7 +126,8 @@ def main():
         "/afs/cern.ch/user/k/kelong/work"
     config_factory = ConfigHistFactory(
         "%s/AnalysisDatasetManager" % path,
-        args.selection
+        args.selection,
+        args.object_restrict
     )
     branches = config_factory.getListOfPlotObjects() if args.branches == "all" \
             else [x.strip() for x in args.branches.split(",")]
