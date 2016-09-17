@@ -7,7 +7,11 @@ class WeightedHistProducer(object):
         self.weight_info = weight_info 
         self.cut_string = ""
         self.weight_branch = weight_branch
-        self.event_weight = self.weight_info.getCrossSection()/self.weight_info.getSumOfWeights()
+        self.event_weight = self.weight_info.getCrossSection()/self.weight_info.getSumOfWeights() \
+            if self.weight_info.getSumOfWeights() > 0 else 0
+        print "EVENT WEIGHT IS %0.2e" % self.event_weight
+        print "Cross section is %0.2e" % self.weight_info.getCrossSection()
+        print "Sum of weights is %i" % self.weight_info.getSumOfWeights()
         self.lumi = 1/self.event_weight
     def setWeightBranch(self, weight_branch):
         self.weight_branch = weight_branch
@@ -15,14 +19,22 @@ class WeightedHistProducer(object):
         self.cut_string = cut_string
     def getCrossSection(self):
         return self.weight_info.getCrossSection()
-    def setLumi(self, lumi):
-        self.lumi = lumi if lumi > 0 else 1/self.event_weight
+    def setLumi(self, lumi, units='pb-1'):
+        if units == 'pb-1':
+            lumi *= 1000
+        elif units != 'fb-1':
+            raise ValueError("Invalid luminosity units! Options are 'pb-1' and 'fb-1'")
+        self.lumi = lumi if lumi > 0 else self.weight_info.getSumOfWeights()
     def produce(self, draw_expr, proof_path="", cut_string="", overflow=True): 
         proof = ROOT.gProof
         if cut_string == "":
             cut_string = self.cut_string
-        draw_cut = cut_string if self.weight_branch == "" else \
-            ''.join([self.weight_branch, "*(" + cut_string + ")" if cut_string != "" else ""])
+        append_cut = lambda x: "*(%s)" % x if x != "" else x
+        weight_string = "*".join([str(self.event_weight), str(self.lumi)] +
+            ([self.weight_branch] if self.weight_branch != "" else []))
+        draw_cut = weight_string + append_cut(cut_string)
+        print "Draw cut is %s" % draw_cut
+        print "Draw expr is %s" % draw_expr
         logging.debug("Draw cut is %s" % draw_cut)
         proof.DrawSelect(proof_path, draw_expr, draw_cut, "goff")
         hist_name = draw_expr.split(">>")[1].split("(")[0]
@@ -38,7 +50,6 @@ class WeightedHistProducer(object):
             num_bins = hist.GetSize() - 2
             add_overflow = hist.GetBinContent(num_bins) + hist.GetBinContent(num_bins + 1)
             hist.SetBinContent(num_bins, add_overflow)
-        hist.Scale(self.event_weight*self.lumi)
         return hist
 # For testing
 def main():

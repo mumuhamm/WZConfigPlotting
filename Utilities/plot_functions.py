@@ -2,6 +2,7 @@ import ROOT
 import glob
 import os
 import logging
+import re
 
 def getHistFromFile(root_file, name_in_file, rename, path_to_hist):
     if not root_file:
@@ -55,7 +56,7 @@ def loadHist(hist, tree, branch_name, cut_string, max_entries, append=False):
     return num
 # Modified from Nick Smith, U-Wisconsin
 # https://github.com/nsmith-/ZHinvAnalysis/blob/master/splitCanvas.py
-def splitCanvas(oldcanvas, stack_name, data_name, names) :
+def splitCanvas(oldcanvas, stack_name, data_name, ratio_text, ratio_range) :
     name = oldcanvas.GetName()
 
     canvas = ROOT.TCanvas(name+'__new', name)
@@ -81,7 +82,7 @@ def splitCanvas(oldcanvas, stack_name, data_name, names) :
     hist1 = hists[0]
     hist2 = stackPad.GetPrimitive(data_name)
     compare_data = False
-    if not hist2:
+    if not isinstance(hist2, ROOT.TH1):
         if len(hists) < 2 and not compare_data:
             logging.warning("Cannot form ratio from < 2 hists in stack.")
             return canvas
@@ -94,7 +95,9 @@ def splitCanvas(oldcanvas, stack_name, data_name, names) :
             logging.warning("No data hist found. Cannot form ratio")
             return canvas
     ratio = hist2.Clone(name+'_ratio_hist')
-    ratio.Sumw2()
+    ratio.SetLineColor(ROOT.kBlack)
+    ratio.SetLineStyle(1)
+    ratio.SetLineWidth(2)
     ratio.Divide(hist1)
     if compare_data:
         ratio.Draw("e1")
@@ -106,9 +109,12 @@ def splitCanvas(oldcanvas, stack_name, data_name, names) :
         ratio.GetXaxis().SetLabelOffset(0.025)
         ratioPad.SetRightMargin(stackPad.GetRightMargin())
     ratio.GetXaxis().SetTitle(hist_stack.GetXaxis().GetTitle())
-    ratio.GetYaxis().SetTitle(''.join([names[1], " / ", names[0]]))
+    hist_stack.GetXaxis().SetTitle("")
+    hist_stack.GetXaxis().SetLabelOffset(999)
+    
+    ratio.GetYaxis().SetTitle(ratio_text)
     ratio.GetYaxis().CenterTitle()
-    ratio.GetYaxis().SetRangeUser(.4, 2.1)
+    ratio.GetYaxis().SetRangeUser(float(ratio_range[0]), float(ratio_range[1]))
     ratio.GetYaxis().SetNdivisions(305)
     ratio.GetYaxis().SetTitleSize(ratio.GetYaxis().GetTitleSize()*0.6)
     ratio.GetXaxis().SetTitleSize(ratio.GetXaxis().GetTitleSize()*0.8)
@@ -155,11 +161,11 @@ def readStyle(canvas) :
     canvas.UseCurrentStyle()
     style.SetIsReading(False)
     return style
-def getHistErrors(hist):
+def getHistStatErrors(hist):
     histErrors = hist.Clone()
     histErrors.SetName(hist.GetName() + "_errors")
     histErrors.SetDirectory(0)
-    #histErrors.Sumw2()
+    if not histErrors.GetSumw2(): histErrors.Sumw2()
     histErrors.SetFillStyle(3013)
     histErrors.SetMarkerSize(0) 
     return histErrors

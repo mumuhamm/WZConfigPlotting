@@ -5,33 +5,42 @@ import logging
 import os
 
 class ConfigHistFactory(object):
-    def __init__(self, dataset_manager_path, dataset_name, fileset):
+    def __init__(self, dataset_manager_path, dataset_name, object_restrict=""):
         self.manager_path = dataset_manager_path
         self.dataset_name = dataset_name
-        self.info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", 
-            self.dataset_name, "%s.json" % fileset]))
+        self.info = UserInput.readJson('/'.join([self.manager_path, "FileInfo",
+            "%s.json" % self.dataset_name]))
         self.config = config_object.ConfigObject(self.info)
         self.mc_info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", "montecarlo.json"]))
         self.data_info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", "data.json"]))
         self.styles = UserInput.readJson('/'.join([self.manager_path, 
             "Styles", "styles.json"]))
+        base_name = self.dataset_name.split("/")[0]
         self.plot_groups = UserInput.readJson('/'.join([self.manager_path, 
-            "PlotGroups", "%s.json" % self.dataset_name]))
+            "PlotGroups", "%s.json" % base_name]))
         object_file = '/'.join([self.manager_path,  "PlotObjects", 
-            self.dataset_name, "%s.json" % fileset])
-        # Objects can be define by the default dataset wide file, or by specific selection files
-        if not os.path.isfile(object_file): object_file = object_file.replace("/%s" % fileset, "")
-        self.plot_objects = UserInput.readJson(object_file)
+            ("_".join([self.dataset_name, object_restrict])
+                if object_restrict != "" else self.dataset_name) + ".json"])
         self.aliases = UserInput.readJson('/'.join([self.manager_path, 
-            "Aliases", "%s.json" % self.dataset_name]))
+            "Aliases", "%s.json" % base_name]))
+        # Objects can be defined by the default dataset-wide file, 
+        # or by specific selection files
+        print "THE PLOT OBJECT FILE IS %s " % object_file
+        if not os.path.isfile(object_file): object_file = object_file.replace(
+                 self.dataset_name, base_name)
+        print "THE PLOT OBJECT FILE IS %s " % object_file
+        self.plot_objects = UserInput.readJson(object_file)
     def getHistDrawExpr(self, object_name, dataset_name, channel):
-        hist_name = '-'.join([dataset_name, channel, object_name])
+        hist_name = '_'.join([x for x in [dataset_name, channel, object_name] 
+            if x != ""])
+        object_name = object_name if object_name in self.plot_objects else object_name.split("_")[0]
         hist_info = self.plot_objects[object_name]['Initialize']
         draw_expr = '>>'.join([object_name, hist_name])
         draw_expr += "(%i,%f,%f)" % (hist_info['nbins'], hist_info['xmin'], hist_info['xmax'])
         return draw_expr
     def getHistBinInfo(self, object_name):
         bin_info = {}
+        object_name = object_name if object_name in self.plot_objects else object_name.split("_")[0]
         hist_info = self.plot_objects[object_name]['Initialize']
         for key in ['nbins', 'xmin', 'xmax']:
             bin_info.update({key : hist_info[key]})
@@ -40,13 +49,22 @@ class ConfigHistFactory(object):
         proof = ROOT.gProof
         proof.ClearInput()
         alias_list = []
-        for name, value in self.aliases['State'][channel].iteritems():
-            alias_list.append(name)
-            proof.AddInput(ROOT.TNamed("alias:%s" % name, value))
+        if channel != "":
+            for name, value in self.aliases['State'][channel].iteritems():
+                alias_list.append(name)
+                proof.AddInput(ROOT.TNamed("alias:%s" % name, value))
         for name, value in self.aliases['Event'].iteritems():
             alias_list.append(name)
             proof.AddInput(ROOT.TNamed("alias:%s" % name, value))
         proof.AddInput(ROOT.TNamed("PROOF_ListOfAliases", ','.join(alias_list)))
+    def hackInAliases(self, expr, channel=""):
+        if channel != "":
+            for name, value in self.aliases['State'][channel].iteritems():
+                expr = expr.replace(name, value)
+        for name, value in self.aliases['Event'].iteritems():
+            expr = expr.replace(name, value)
+        print "With aliases it's: %s" % expr
+        return expr
     def setHistAttributes(self, hist, object_name, plot_group):
         config = self.config
         info = self.info
@@ -55,6 +73,7 @@ class ConfigHistFactory(object):
                 if plot_group not in self.plot_groups.keys() else self.plot_groups[plot_group]
         hist.SetTitle(plot_group['Name'])
         config.setAttributes(hist, self.styles[plot_group['Style']])
+        object_name = object_name if object_name in self.plot_objects else object_name.split("_")[0]
         config.setAttributes(hist, self.plot_objects[object_name]['Attributes'])
     def getPlotGroupMembers(self, plot_group):
         logging.debug("Plot Groups are %s" % self.plot_groups.keys())
@@ -75,7 +94,6 @@ def main():
         "WZAnalysis", "Zselection")
     draw_expr = test.getHistDrawExpr("l1Pt", "wz3lnu-powheg", "eee")
     hist_name = draw_expr.split(">>")[1].split("(")[0]
-    print "Draw expression was %s hist name is %s" % (draw_expr, hist_name)
 
 if __name__ == "__main__":
     main()

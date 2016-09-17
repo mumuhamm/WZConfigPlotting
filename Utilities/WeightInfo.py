@@ -14,6 +14,7 @@ class WeightInfoProducer(object):
         
         for row in metaInfoChain:
             self.sum_of_weights += getattr(row, sum_weights_branch)
+            #print "Now the sum is %e" % self.sum_of_weights
     def produce(self):
         return WeightInfo(self.cross_section, self.sum_of_weights)
 
