@@ -3,21 +3,20 @@ import UserInput
 import config_object
 import logging
 import os
+import glob
 
 class ConfigHistFactory(object):
     def __init__(self, dataset_manager_path, dataset_name, object_restrict=""):
         self.manager_path = dataset_manager_path
         self.dataset_name = dataset_name
-        self.info = UserInput.readJson('/'.join([self.manager_path, "FileInfo",
-            "%s.json" % self.dataset_name]))
+        self.info = self.readAllInSet("FileInfo", self.dataset_name)
         self.config = config_object.ConfigObject(self.info)
         self.mc_info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", "montecarlo.json"]))
         self.data_info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", "data.json"]))
         self.styles = UserInput.readJson('/'.join([self.manager_path, 
             "Styles", "styles.json"]))
         base_name = self.dataset_name.split("/")[0]
-        self.plot_groups = UserInput.readJson('/'.join([self.manager_path, 
-            "PlotGroups", "%s.json" % base_name]))
+        self.plot_groups = self.readAllInSet("PlotGroups", base_name)
         object_file = '/'.join([self.manager_path,  "PlotObjects", 
             ("_".join([self.dataset_name, object_restrict])
                 if object_restrict != "" else self.dataset_name) + ".json"])
@@ -30,6 +29,12 @@ class ConfigHistFactory(object):
                  self.dataset_name, base_name)
         print "THE PLOT OBJECT FILE IS %s " % object_file
         self.plot_objects = UserInput.readJson(object_file)
+    def readAllInSet(self, object_type, base_name):
+        info = {}
+        for file_name in glob.glob('/'.join([self.manager_path, 
+            object_type, "%s*.json" % base_name])):
+            info.update(UserInput.readJson(file_name))
+        return info
     def getHistDrawExpr(self, object_name, dataset_name, channel):
         hist_name = '_'.join([x for x in [dataset_name, channel, object_name] 
             if x != ""])

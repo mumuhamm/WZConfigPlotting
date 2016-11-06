@@ -35,10 +35,9 @@ def getDefaultParser():
                         help="Don't add CMS plot decorations")
     parser.add_argument("--logy", action='store_true',
                         help="Use logaritmic scale on Y-axis")
-    parser.add_argument("-c","--channel", type=str, default="",
-                        choices=['eee', 'eem', 'emm', 'mmm'],
-                        help="Select only one channel")
+    parser.add_argument("-c", "--channels", type=str, default="eee,mmm,eem,emm",
+                        help="List (separate by commas) of channels to plot") 
     parser.add_argument("-f", "--files_to_plot", type=str, required=False,
-                        default="all", help="Files to make plots from, "
+                        default="WZVBS", help="Files to make plots from, "
                         "separated by a comma (match name in file_info.json)")
     return parser 

@@ -10,7 +10,6 @@ import logging
 import datetime
 import shutil
 import errno
-from IPython import embed
 
 def makePlot(hist_stack, data_hist, branch_name, args):
     canvas = ROOT.TCanvas("%s_canvas" % branch_name, branch_name, 1600, 1200) 
@@ -20,7 +19,7 @@ def makePlot(hist_stack, data_hist, branch_name, args):
         data_hist.Draw("e1 same")
     if not args.no_decorations:
         ROOT.dotrootImport('kdlong/CMSPlotDecorations')
-        ROOT.CMSlumi(canvas, 0, 11, "%0.2f fb^{-1} (13 TeV)" % (args.luminosity),
+        ROOT.CMSlumi(canvas, 0, 11, "%0.1f fb^{-1} (13 TeV)" % (args.luminosity),
                 "Preliminary Simulation" if args.simulation else "Preliminary")
     hist_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
     hist_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
@@ -31,7 +30,9 @@ def makePlot(hist_stack, data_hist, branch_name, args):
     hist_stack.GetHistogram().SetLabelSize(0.04)
     hist_stack.SetMinimum(hists[0].GetMinimum()*args.scaleymin)
     #if hist_stack.GetMaximum() < hists[0].GetMaximum():
-    hist_stack.SetMaximum(hists[0].GetMaximum()*args.scaleymax*args.luminosity)
+    # Adding an arbirary factor of 100 here so the scaling doesn't cut off info from
+    # Hists. This should be fixed
+    hist_stack.SetMaximum(hists[0].GetMaximum()*args.scaleymax*args.luminosity/100)
     #else:
     #    new_max = 1.1*hist_stack.GetMaximum() if not data_hist else \
     #            1.1*max(data_hist.GetMaximum(), hist_stack.GetMaximum()) 
@@ -40,10 +41,11 @@ def makePlot(hist_stack, data_hist, branch_name, args):
         histErrors = getHistStatErrors(hist_stack, args.nostack)
         for error_hist in histErrors:
             error_hist.Draw("same e2")
-    offset = ROOT.gPad.GetRightMargin() - 0.04
-    xcoords = [.10, .5] if args.legend_left else [.65-offset, .90-offset]
+    offset = ROOT.gPad.GetLeftMargin() - 0.04 if args.legend_left else \
+        ROOT.gPad.GetRightMargin() - 0.04 
+    xcoords = [.10+offset, .40+offset] if args.legend_left else [.65-offset, .92-offset]
     unique_entries = len(set([x.GetFillColor() for x in hists]))
-    ymax = 0.7 if args.legend_left else 0.9
+    ymax = 0.8 if args.legend_left else 0.9
     ycoords = [ymax, ymax - 0.2*unique_entries*args.scalelegy]
     coords = [xcoords[0], ycoords[0], xcoords[1], ycoords[1]]
     if args.logy:
@@ -94,7 +96,7 @@ def getPrettyLegend(hist_stack, data_hist, coords):
     if data_hist:
         legend.AddEntry(data_hist, data_hist.GetTitle(), "lp")
     hist_names = []
-    for hist in hists:#reversed(hists):
+    for hist in reversed(hists):
         if hist.GetTitle() not in hist_names:
             legend.AddEntry(hist, hist.GetTitle(), "f")
         hist_names.append(hist.GetTitle())
@@ -126,11 +128,12 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, cut_string
             continue
         hist_factory[name] = dict(all_files[name])
         if "data" not in name:
+            base_name = name.split("__")[0]
             metaTree = buildChain(hist_factory[name]["file_path"],
                     metaTree_name)
-            kfac = 1. if 'kfactor' not in mc_info[name].keys() else mc_info[name]['kfactor']
+            kfac = 1. if 'kfactor' not in mc_info[base_name].keys() else mc_info[base_name]['kfactor']
             weight_info = WeightInfo.WeightInfoProducer(metaTree, 
-                    mc_info[name]['cross_section']*kfac,
+                    mc_info[base_name]['cross_section']*kfac,
                     sum_weights_branch).produce()
             histProducer = WeightedHistProducer.WeightedHistProducer(weight_info, weight_branch)  
             histProducer.setLumi(luminosity)
@@ -140,10 +143,10 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, cut_string
         histProducer.setCutString(cut_string)
         hist_factory[name].update({"histProducer" : histProducer})
     return hist_factory
-def getConfigHist(config_factory, plot_group, selection, branch_name, 
-    luminosity=1, cut_string=""):
+def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
+    addOverflow, luminosity=1, cut_string=""):
     if "Gen" not in selection:
-        states = ['eee', 'eem', 'emm', 'mmm']
+        states = [x.strip() for x in channels.split(",")]
         trees = ["%s/ntuple" % state for state in states]
     else:
         trees = ["analyze%s/Ntuple" % ("ZZ" if "ZZ" in selection else "WZ")]
@@ -172,8 +175,11 @@ def getConfigHist(config_factory, plot_group, selection, branch_name,
             draw_expr = config_factory.getHistDrawExpr(branch_name, name, state)
             logging.debug("Draw expression was %s" % draw_expr)
             proof_name = "-".join([name, "%s#/%s" % (selection.replace("/", "-"), tree)])
+            logging.debug("Proof path was %s" % proof_name)
             try:
-                state_hist = producer.produce(draw_expr, proof_name)
+                if "weight" in entry.keys():
+                    producer.addWeight(entry["weight"])
+                state_hist = producer.produce(draw_expr, proof_name, overflow=addOverflow)
                 log_info += "\nNumber of events: %f" % state_hist.Integral()
                 hist.Add(state_hist)
             except ValueError as error:

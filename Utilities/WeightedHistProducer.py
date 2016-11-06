@@ -12,11 +12,17 @@ class WeightedHistProducer(object):
         print "EVENT WEIGHT IS %0.2e" % self.event_weight
         print "Cross section is %0.2e" % self.weight_info.getCrossSection()
         print "Sum of weights is %i" % self.weight_info.getSumOfWeights()
-        self.lumi = 1/self.event_weight
+        self.lumi = 1/self.event_weight if self.event_weight > 0 else 1
     def setWeightBranch(self, weight_branch):
         self.weight_branch = weight_branch
     def setCutString(self, cut_string):
         self.cut_string = cut_string
+    def addWeight(self, weight):
+        append_cut = lambda x: "*(%s)" % x if x != "" else x
+        if self.cut_string != "":
+            self.cut_string += append_cut(weight)
+        else:
+            self.cut_string = weight
     def getCrossSection(self):
         return self.weight_info.getCrossSection()
     def setLumi(self, lumi, units='pb-1'):
@@ -35,6 +41,7 @@ class WeightedHistProducer(object):
         draw_cut = weight_string + append_cut(cut_string)
         print "Draw cut is %s" % draw_cut
         print "Draw expr is %s" % draw_expr
+        print "Proof path is %s" % proof_path
         logging.debug("Draw cut is %s" % draw_cut)
         proof.DrawSelect(proof_path, draw_expr, draw_cut, "goff")
         hist_name = draw_expr.split(">>")[1].split("(")[0]

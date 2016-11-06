@@ -34,6 +34,8 @@ def getComLineArgs():
                         help="Folder name to save plots in (default is current time)")
     parser.add_argument("--simulation", action='store_true',
                         help="Write 'Simulation' in CMS style text")
+    parser.add_argument("--no_overflow", action='store_true',
+                        help="No overflow bin")
     parser.add_argument("--scaleymax", type=float, default=1.0,
                         help="Scale default ymax by this amount")
     parser.add_argument("--scaleymin", type=float, default=1.0,
@@ -68,7 +70,7 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
     with open("temp.txt", "w") as mc_file:
         mc_file.write(meta_info)
         mc_file.write("Selection: %s" % selection)
-        mc_file.write("\nAdditional cut: %s" % "None" if cut_string == "" else cut_string)
+        mc_file.write("\nAdditional cut: %s" % ("None" if cut_string == "" else cut_string))
         mc_file.write("\nLuminosity: %0.2f fb^{-1}" % (luminosity))
         mc_file.write("\nPlotting branch: %s\n" % branch_name)
         mc_file.write(mc_info.get_string())
@@ -76,13 +78,13 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
             round(math.sqrt(sum([x["error"]*x["error"] for x in hist_info.values()])), 2)))
         mc_file.write("\nTotal sum of background Monte Carlo: %0.2f +/- %0.2f" % (round(total_background, 2), 
             round(math.sqrt(background_err), 2)))
-def getStacked(config_factory, selection, filelist, branch_name, luminosity, cut_string=""):
+def getStacked(config_factory, selection, filelist, branch_name, channels, luminosity, addOverflow, cut_string=""):
     hist_stack = ROOT.THStack("stack", "")
     hist_info = {}
     for plot_set in filelist:
         print "plot set is %s " % plot_set 
         hist = helper.getConfigHist(config_factory, plot_set, selection,  
-                branch_name, luminosity, cut_string)
+                branch_name, channels, addOverflow, luminosity, cut_string)
         raw_events = hist.GetEntries() - 1
         hist_stack.Add(hist)
         weighted_events = hist.Integral()
@@ -114,14 +116,23 @@ def getStacked(config_factory, selection, filelist, branch_name, luminosity, cut
         hist_stack.Add(scale_hist_up)
         hist_stack.Add(scale_hist_down)
     return hist_stack
+def getListOfFiles(file_set):
+    if file_set == "WZxsec2016-pow":
+        return ["top", "vvv", "vv-powheg", "zg", "dy",
+            "wz-powheg"]
+    elif file_set == "WZxsec2016":
+        return ["top", "vvv", "vv", "zg", "dy",
+            "wz"]
+    elif file_set == "WZVBS":
+        return ["top", "vvv", "vv", "zg", "dy",
+            "wz", "wlljj-ewk"]
+    return [x.strip() for x in file_set.split(",")]
 
 def main():
     args = getComLineArgs()
     ROOT.gROOT.SetBatch(True)
     ROOT.TProof.Open('workers=12')
-    filelist = ["ttbar", "st", "ttv", "vvv", "ww", "zz", "zg", "dy",
-            "wz"] if args.files_to_plot == "all" else \
-            [x.strip() for x in args.files_to_plot.split(",")]
+    filelist = getListOfFiles(args.files_to_plot)
     path = "/cms/kdlong" if "hep.wisc.edu" in os.environ['HOSTNAME'] else \
         "/afs/cern.ch/user/k/kelong/work"
     config_factory = ConfigHistFactory(
@@ -135,10 +146,10 @@ def main():
     (plot_path, html_path) = helper.getPlotPaths(args.selection, args.folder_name, True)
     for branch_name in branches:
         hist_stack = getStacked(config_factory, args.selection, filelist, 
-                branch_name, args.luminosity, cut_string)
+                branch_name, args.channels, args.luminosity, not args.no_overflow, cut_string)
         if not args.no_data:
             data_hist = helper.getConfigHist(config_factory, "data", args.selection, 
-                    branch_name)
+                    branch_name, args.channels, 1, cut_string)
             with open("temp.txt", "a") as events_log_file:
                 events_log_file.write("\nNumber of events in data: %i" % data_hist.Integral())
         else:
