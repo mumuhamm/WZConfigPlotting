@@ -1,0 +1,11 @@
+# To download: grep -v '^#' download.url | while read url filename; do wget $url -O $filename; done
+#
+# https://twiki.cern.ch/twiki/bin/view/CMS/EgammaIDRecipesRun2#Efficiencies_and_scale_factors
+http://fcouderc.web.cern.ch/fcouderc/EGamma/scaleFactors/ichep2016_80X/resultsGsfID/egammaEffi.txt_SF2D.root ichepElectronGsfSF.root
+http://fcouderc.web.cern.ch/fcouderc/EGamma/scaleFactors/ichep2016_80X//resultsEleID/runBCD/passingMedium/egammaEffi.txt_SF2D.root ichepElectronMediumSF.root
+#
+# https://twiki.cern.ch/twiki/bin/view/CMS/MuonWorkInProgressAndPagResults
+# /afs/cern.ch/cms/Physics/muon/ReferenceEfficiencies/Run2016/25ns/proviSFs_7p65/MuonID_Z_RunBCD_prompt80X_7p65.root
+# /afs/cern.ch/cms/Physics/muon/ReferenceEfficiencies/Run2016/25ns/proviSFs_7p65/MuonIso_Z_RunBCD_prompt80X_7p65.root
+#
+# Pileup from https://gitlab.cern.ch/ncsmith/PileupWeights @6a23cc6
