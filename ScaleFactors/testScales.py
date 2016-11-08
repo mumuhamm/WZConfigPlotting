@@ -28,7 +28,7 @@ dummyTree.Scan('randVal : globalFunc(randVal)', '', '', 10)
 # Generate with setupScaleFactors.py
 # Will need appropriate files in ../data/
 fScales = ROOT.TFile('scaleFactors.root')
-#pu = fScales.Get('pileupSF')
+pu = fScales.Get('pileupSF')
 muon = fScales.Get('muonIsoSF')
 del fScales # Make sure we don't rely on file being open
 
