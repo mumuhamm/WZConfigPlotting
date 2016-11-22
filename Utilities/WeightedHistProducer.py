@@ -18,8 +18,8 @@ class WeightedHistProducer(object):
     def setCutString(self, cut_string):
         self.cut_string = cut_string
     def addWeight(self, weight):
-        append_cut = lambda x: "*(%s)" % x if x != "" else x
-        if self.cut_string != "":
+        append_cut = lambda x: "*(%s)" % x if x not in ["", None] else x
+        if self.cut_string not in ["", None]:
             self.cut_string += append_cut(weight)
         else:
             self.cut_string = weight
@@ -30,7 +30,7 @@ class WeightedHistProducer(object):
             lumi *= 1000
         elif units != 'fb-1':
             raise ValueError("Invalid luminosity units! Options are 'pb-1' and 'fb-1'")
-        self.lumi = lumi if lumi > 0 else self.weight_info.getSumOfWeights()
+        self.lumi = lumi if lumi > 0 else 1/self.getCrossSection()
     def produce(self, draw_expr, proof_path="", cut_string="", overflow=True): 
         proof = ROOT.gProof
         if cut_string == "":
@@ -57,6 +57,9 @@ class WeightedHistProducer(object):
             num_bins = hist.GetSize() - 2
             add_overflow = hist.GetBinContent(num_bins) + hist.GetBinContent(num_bins + 1)
             hist.SetBinContent(num_bins, add_overflow)
+        #Normalize to unity if lumi is negative
+        if self.lumi == 1/self.getCrossSection():
+            hist.Scale(1/hist.Integral())
         return hist
 # For testing
 def main():

@@ -8,7 +8,7 @@ def getHistFromFile(root_file, name_in_file, rename, path_to_hist):
     if not root_file:
         print 'Failed to open %s' % file
         exit(0)
-    hist = ROOT.TH1F()   
+    hist = ROOT.TH1D()   
     if path_to_hist != "":
         name_in_file = path_to_hist.join(["/", name_in_file]) 
     hist = root_file.Get(name_in_file)

@@ -1,3 +1,4 @@
+import ROOT
 class WeightInfo(object):
     def __init__(self, cross_section, sum_of_weights):
         self.cross_section = cross_section
@@ -11,10 +12,9 @@ class WeightInfoProducer(object):
     def __init__(self, metaInfoChain, cross_section, sum_weights_branch):
         self.cross_section = cross_section
         self.sum_of_weights = 0
-        
-        for row in metaInfoChain:
-            self.sum_of_weights += getattr(row, sum_weights_branch)
-            #print "Now the sum is %e" % self.sum_of_weights
+        hist = ROOT.TH1F("sumweights", "sumweights", 1,0,100)
+        metaInfoChain.Draw("1>>sumweights", sum_weights_branch)
+        self.sum_of_weights = hist.Integral()
     def produce(self):
         return WeightInfo(self.cross_section, self.sum_of_weights)
 

@@ -11,11 +11,11 @@ class ConfigObject:
         initialize = self.data[object_name]['Initialize']
         if "TH1" in initialize['type']:
             if "varbins" not in initialize:
-                tObject = ROOT.TH1F(object_name, title, 
+                tObject = ROOT.TH1D(object_name, title, 
                     initialize['nbins'], initialize['xmin'], 
                     initialize['xmax'])
             else:
-                tObject = ROOT.TH1F(object_name, object_name, 
+                tObject = ROOT.TH1D(object_name, object_name, 
                     initialize['nbins'], 
                     array.array('d', initialize['varbins'])) 
             tObject.SetDirectory(ROOT.gROOT)

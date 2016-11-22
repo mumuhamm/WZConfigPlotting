@@ -19,7 +19,9 @@ def makePlot(hist_stack, data_hist, branch_name, args):
         data_hist.Draw("e1 same")
     if not args.no_decorations:
         ROOT.dotrootImport('kdlong/CMSPlotDecorations')
-        ROOT.CMSlumi(canvas, 0, 11, "%0.1f fb^{-1} (13 TeV)" % (args.luminosity),
+        scale_label = "Normalized to Unity" if args.luminosity < 0 else \
+            "%0.1f fb^{-1}" % args.luminosity
+        ROOT.CMSlumi(canvas, 0, 11, "%s (13 TeV)" % scale_label,
                 "Preliminary Simulation" if args.simulation else "Preliminary")
     hist_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
     hist_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
@@ -31,8 +33,9 @@ def makePlot(hist_stack, data_hist, branch_name, args):
     hist_stack.SetMinimum(hists[0].GetMinimum()*args.scaleymin)
     #if hist_stack.GetMaximum() < hists[0].GetMaximum():
     # Adding an arbirary factor of 100 here so the scaling doesn't cut off info from
-    # Hists. This should be fixed
-    hist_stack.SetMaximum(hists[0].GetMaximum()*args.scaleymax*args.luminosity/100)
+    # Hists. Not applied when lumi < 1This should be fixed
+    lumi = args.luminosity/100 if args.luminosity > 0 else 1
+    hist_stack.SetMaximum(hists[0].GetMaximum()*args.scaleymax*lumi)
     #else:
     #    new_max = 1.1*hist_stack.GetMaximum() if not data_hist else \
     #            1.1*max(data_hist.GetMaximum(), hist_stack.GetMaximum()) 
@@ -101,14 +104,6 @@ def getPrettyLegend(hist_stack, data_hist, coords):
             legend.AddEntry(hist, hist.GetTitle(), "f")
         hist_names.append(hist.GetTitle())
     return legend
-def buildChain(filelist, treename):
-    chain = ROOT.TChain(treename)
-    for filename in glob.glob(filelist):
-        filename = filename.strip()
-        if ".root" not in filename or not os.path.isfile(filename):
-            raise IOError("%s is not a valid root file!" % filename)
-        chain.Add(filename)
-    return chain
 def getHistFactory(config_factory, selection, filelist, luminosity=1, cut_string=""):
     if "Gen" not in selection:
         metaTree_name = "metaInfo/metaInfo"
@@ -129,8 +124,8 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, cut_string
         hist_factory[name] = dict(all_files[name])
         if "data" not in name:
             base_name = name.split("__")[0]
-            metaTree = buildChain(hist_factory[name]["file_path"],
-                    metaTree_name)
+            metaTree = ROOT.TChain(metaTree_name)
+            metaTree.Add(hist_factory[name]["file_path"])
             kfac = 1. if 'kfactor' not in mc_info[base_name].keys() else mc_info[base_name]['kfactor']
             weight_info = WeightInfo.WeightInfoProducer(metaTree, 
                     mc_info[base_name]['cross_section']*kfac,
@@ -144,7 +139,7 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, cut_string
         hist_factory[name].update({"histProducer" : histProducer})
     return hist_factory
 def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
-    addOverflow, luminosity=1, cut_string=""):
+    addOverflow, cut_string="", luminosity=1, no_scalefacs=False):
     if "Gen" not in selection:
         states = [x.strip() for x in channels.split(",")]
         trees = ["%s/ntuple" % state for state in states]
@@ -162,7 +157,7 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
     hist = ROOT.gProof.GetOutputList().FindObject(hist_name)
     if hist:
         hist.Delete()
-    hist = ROOT.TH1F(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
+    hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
     log_info = ""
     for name, entry in hist_info.iteritems():
         producer = entry["histProducer"]
@@ -179,6 +174,9 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
             try:
                 if "weight" in entry.keys():
                     producer.addWeight(entry["weight"])
+                #if "WZxsec2016" in selection and not "data" in draw_expr and not no_scalefacs:
+                #    print "SCALE FAC EXPR IS ", getScaleFactorExpression(state, "tight", "tight")
+                #    producer.addWeight(getScaleFactorExpression(state, "tight", "tight"))
                 state_hist = producer.produce(draw_expr, proof_name, overflow=addOverflow)
                 log_info += "\nNumber of events: %f" % state_hist.Integral()
                 hist.Add(state_hist)
@@ -190,6 +188,30 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
     logging.debug(log_info)
     logging.debug("Hist has %i entries" % hist.GetEntries())
     return hist
+def getScaleFactorExpression(state, muonId, electronId):
+    if muonId != "tight" and electronId != "tight":
+        return "1"
+    if state == "eem":
+        return "e1TightIdSF*" \
+                "e2TightIdSF*" \
+                "mTightIsoSF*" \
+                "mTightIdSF*" \
+                "pileupSF"
+    elif state == "emm":
+        return "eTightIdSF*" \
+                "m1TightIdSF*" \
+                "m1TightIsoSF*" \
+                "m2TightIsoSF*" \
+                "m2TightIdSF*" \
+                "pileupSF"
+    elif state == "mmm":
+        return "m1TightIsoSF*" \
+                "m1TightIdSF*" \
+                "m2TightIsoSF*" \
+                "m2TightIdSF*" \
+                "m3TightIsoSF*" \
+                "m3TightIdSF*" \
+                "pileupSF"
 def getPlotPaths(selection, folder_name, write_log_file):
     if "hep.wisc.edu" in os.environ['HOSTNAME']:
         storage_area = "/nfs_scratch/kdlong"

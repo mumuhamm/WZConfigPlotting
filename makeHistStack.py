@@ -12,6 +12,7 @@ import math
 import sys
 import datetime
 from Utilities.scripts import makeSimpleHtml
+from ScaleFactors.ScaleFactorsHelper import ScaleFactorsHelper
 
 def getComLineArgs():
     parser = UserInput.getDefaultParser()
@@ -36,6 +37,8 @@ def getComLineArgs():
                         help="Write 'Simulation' in CMS style text")
     parser.add_argument("--no_overflow", action='store_true',
                         help="No overflow bin")
+    parser.add_argument("--no_scalefactors", action='store_true',
+                        help="No scale factors")
     parser.add_argument("--scaleymax", type=float, default=1.0,
                         help="Scale default ymax by this amount")
     parser.add_argument("--scaleymin", type=float, default=1.0,
@@ -78,13 +81,15 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
             round(math.sqrt(sum([x["error"]*x["error"] for x in hist_info.values()])), 2)))
         mc_file.write("\nTotal sum of background Monte Carlo: %0.2f +/- %0.2f" % (round(total_background, 2), 
             round(math.sqrt(background_err), 2)))
-def getStacked(config_factory, selection, filelist, branch_name, channels, luminosity, addOverflow, cut_string=""):
+def getStacked(config_factory, selection, filelist, branch_name, channels, addOverflow,
+               cut_string="", luminosity=1, no_scalefacs=False):
     hist_stack = ROOT.THStack("stack", "")
     hist_info = {}
     for plot_set in filelist:
         print "plot set is %s " % plot_set 
         hist = helper.getConfigHist(config_factory, plot_set, selection,  
-                branch_name, channels, addOverflow, luminosity, cut_string)
+                branch_name, channels, addOverflow, cut_string, luminosity,
+                no_scalefacs)
         raw_events = hist.GetEntries() - 1
         hist_stack.Add(hist)
         weighted_events = hist.Integral()
@@ -135,6 +140,7 @@ def main():
     filelist = getListOfFiles(args.files_to_plot)
     path = "/cms/kdlong" if "hep.wisc.edu" in os.environ['HOSTNAME'] else \
         "/afs/cern.ch/user/k/kelong/work"
+    print "MANAGER PATH IS ", path
     config_factory = ConfigHistFactory(
         "%s/AnalysisDatasetManager" % path,
         args.selection,
@@ -144,12 +150,17 @@ def main():
             else [x.strip() for x in args.branches.split(",")]
     cut_string = args.make_cut
     (plot_path, html_path) = helper.getPlotPaths(args.selection, args.folder_name, True)
+    #if not args.no_scalefactors and "WZxsec2016" in args.selection:
+    #    print "We're doing this right?"
+    #    scale_facs = ScaleFactorsHelper("ScaleFactors/scaleFactors.root")
+    #    scale_facs.registerAllSFs()
     for branch_name in branches:
         hist_stack = getStacked(config_factory, args.selection, filelist, 
-                branch_name, args.channels, args.luminosity, not args.no_overflow, cut_string)
+                branch_name, args.channels, not args.no_overflow, cut_string,
+                args.luminosity, args.no_scalefactors)
         if not args.no_data:
             data_hist = helper.getConfigHist(config_factory, "data", args.selection, 
-                    branch_name, args.channels, 1, cut_string)
+                    branch_name, args.channels, not args.no_overflow, cut_string)
             with open("temp.txt", "a") as events_log_file:
                 events_log_file.write("\nNumber of events in data: %i" % data_hist.Integral())
         else:
