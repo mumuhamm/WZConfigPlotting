@@ -58,7 +58,8 @@ class WeightedHistProducer(object):
             add_overflow = hist.GetBinContent(num_bins) + hist.GetBinContent(num_bins + 1)
             hist.SetBinContent(num_bins, add_overflow)
         #Normalize to unity if lumi is negative
-        if self.lumi == 1/self.getCrossSection():
+        # Don't do this for data, where cross section and lumi are both 1
+        if self.lumi == 1/self.getCrossSection() and self.getCrossSection() != 1:
             hist.Scale(1/hist.Integral())
         return hist
 # For testing
