@@ -45,8 +45,8 @@ def getComLineArgs():
                         help="Scale default ymin by this amount")
     parser.add_argument("--scalelegy", type=float, default=1.0,
                         help="Scale default legend entry size by this amount")
-    parser.add_argument("--ratio_range", nargs=2, default=[0,2.1],
-                        help="Ratio min ratio max (default 0 2.1)")
+    parser.add_argument("--ratio_range", nargs=2, default=[0.5,1.5],
+                        help="Ratio min ratio max (default 0.5 1.5)")
     parser.add_argument("--scalexmax", type=float, default=1.0,
                         help="Scale default xmax by this amount")
     return parser.parse_args()
@@ -121,10 +121,16 @@ def getStacked(config_factory, selection, filelist, branch_name, channels, addOv
         hist_stack.Add(scale_hist_up)
         hist_stack.Add(scale_hist_down)
     return hist_stack
-def getListOfFiles(file_set):
-    if file_set == "WZxsec2016-pow":
+def getListOfFiles(file_set, selection):
+    if file_set == "WZxsec2016-pow" and "preselection" in selection:
+        return ["top", "vvv", "vv-powheg", "dy",
+            "wz-powheg"]
+    elif file_set == "WZxsec2016-pow":
         return ["top", "vvv", "vv-powheg", "zg", "dy",
             "wz-powheg"]
+    elif file_set == "WZxsec2016" and "preselection" in selection:
+        return ["top", "vvv", "vv", "zg", "dy",
+            "wz"]
     elif file_set == "WZxsec2016":
         return ["top", "vvv", "vv", "zg", "dy",
             "wz"]
@@ -137,7 +143,7 @@ def main():
     args = getComLineArgs()
     ROOT.gROOT.SetBatch(True)
     ROOT.TProof.Open('workers=12')
-    filelist = getListOfFiles(args.files_to_plot)
+    filelist = getListOfFiles(args.files_to_plot, args.selection)
     path = "/cms/kdlong" if "hep.wisc.edu" in os.environ['HOSTNAME'] else \
         "/afs/cern.ch/user/k/kelong/work"
     print "MANAGER PATH IS ", path
@@ -150,10 +156,6 @@ def main():
             else [x.strip() for x in args.branches.split(",")]
     cut_string = args.make_cut
     (plot_path, html_path) = helper.getPlotPaths(args.selection, args.folder_name, True)
-    #if not args.no_scalefactors and "WZxsec2016" in args.selection:
-    #    print "We're doing this right?"
-    #    scale_facs = ScaleFactorsHelper("ScaleFactors/scaleFactors.root")
-    #    scale_facs.registerAllSFs()
     for branch_name in branches:
         hist_stack = getStacked(config_factory, args.selection, filelist, 
                 branch_name, args.channels, not args.no_overflow, cut_string,

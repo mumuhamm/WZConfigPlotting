@@ -46,10 +46,12 @@ def makePlot(hist_stack, data_hist, branch_name, args):
             error_hist.Draw("same e2")
     offset = ROOT.gPad.GetLeftMargin() - 0.04 if args.legend_left else \
         ROOT.gPad.GetRightMargin() - 0.04 
-    xcoords = [.10+offset, .40+offset] if args.legend_left else [.65-offset, .92-offset]
+    width = .2 if "WZxsec" in args.selection else 0.4
+    xcoords = [.10+offset, .1+width+offset] if args.legend_left \
+        else [.92-width-offset, .92-offset]
     unique_entries = len(set([x.GetFillColor() for x in hists]))
     ymax = 0.8 if args.legend_left else 0.9
-    ycoords = [ymax, ymax - 0.2*unique_entries*args.scalelegy]
+    ycoords = [ymax, ymax - 0.08*unique_entries*args.scalelegy]
     coords = [xcoords[0], ycoords[0], xcoords[1], ycoords[1]]
     if args.logy:
         canvas.SetLogy()
@@ -104,7 +106,7 @@ def getPrettyLegend(hist_stack, data_hist, coords):
             legend.AddEntry(hist, hist.GetTitle(), "f")
         hist_names.append(hist.GetTitle())
     return legend
-def getHistFactory(config_factory, selection, filelist, luminosity=1, cut_string=""):
+def getHistFactory(config_factory, selection, filelist, luminosity=1):
     if "Gen" not in selection:
         metaTree_name = "metaInfo/metaInfo"
         sum_weights_branch = "summedWeights"
@@ -135,7 +137,6 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, cut_string
         else:
             histProducer = WeightedHistProducer.WeightedHistProducer(
                     WeightInfo.WeightInfo(1, 1,), "")  
-        histProducer.setCutString(cut_string)
         hist_factory[name].update({"histProducer" : histProducer})
     return hist_factory
 def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
@@ -151,7 +152,7 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
         logging.warning(e.message)
         logging.warning("Treating %s as file name" % plot_group)
         filelist = [plot_group]
-    hist_info = getHistFactory(config_factory, selection, filelist, luminosity, cut_string)
+    hist_info = getHistFactory(config_factory, selection, filelist, luminosity)
     bin_info = config_factory.getHistBinInfo(branch_name)
     hist_name = "-".join([plot_group, selection.replace("/", "-"), branch_name.split("_")[0]])
     hist = ROOT.gProof.GetOutputList().FindObject(hist_name)
@@ -167,16 +168,24 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
             log_info += "\nFor state %s" % state
             config_factory.setProofAliases(state)
             cut_string = config_factory.hackInAliases(cut_string)
+            if "WZxsec2016" in selection and not "data" in name and not no_scalefacs:
+                print "SCALE FAC EXPR IS ", getScaleFactorExpression(state, "tight", "tight")
+                if cut_string != "":
+                    append_cut = lambda x: "*(%s)" % x if x not in ["", None] else x
+                    weighted_cut_string = "(" + cut_string + ")" \
+                        + append_cut(getScaleFactorExpression(state, "tight", "tight"))
+                else:
+                    weighted_cut_string = getScaleFactorExpression(state, "tight", "tight")
+            else:
+                weighted_cut_string = cut_string
+            producer.setCutString(weighted_cut_string)
+            if "weight" in entry.keys():
+                producer.addWeight(entry["weight"])
             draw_expr = config_factory.getHistDrawExpr(branch_name, name, state)
             logging.debug("Draw expression was %s" % draw_expr)
             proof_name = "-".join([name, "%s#/%s" % (selection.replace("/", "-"), tree)])
             logging.debug("Proof path was %s" % proof_name)
             try:
-                if "weight" in entry.keys():
-                    producer.addWeight(entry["weight"])
-                #if "WZxsec2016" in selection and not "data" in draw_expr and not no_scalefacs:
-                #    print "SCALE FAC EXPR IS ", getScaleFactorExpression(state, "tight", "tight")
-                #    producer.addWeight(getScaleFactorExpression(state, "tight", "tight"))
                 state_hist = producer.produce(draw_expr, proof_name, overflow=addOverflow)
                 log_info += "\nNumber of events: %f" % state_hist.Integral()
                 hist.Add(state_hist)
@@ -191,26 +200,31 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
 def getScaleFactorExpression(state, muonId, electronId):
     if muonId != "tight" and electronId != "tight":
         return "1"
-    if state == "eem":
-        return "e1TightIdSF*" \
-                "e2TightIdSF*" \
+    if state == "eee":
+        return "e1TightIDSF*" \
+                "e2TightIDSF*" \
+                "e3TightIDSF*" \
+                "pileupSF"
+    elif state == "eem":
+        return "e1TightIDSF*" \
+                "e2TightIDSF*" \
                 "mTightIsoSF*" \
-                "mTightIdSF*" \
+                "mTightIDSF*" \
                 "pileupSF"
     elif state == "emm":
-        return "eTightIdSF*" \
-                "m1TightIdSF*" \
+        return "eTightIDSF*" \
+                "m1TightIDSF*" \
                 "m1TightIsoSF*" \
                 "m2TightIsoSF*" \
-                "m2TightIdSF*" \
+                "m2TightIDSF*" \
                 "pileupSF"
     elif state == "mmm":
         return "m1TightIsoSF*" \
-                "m1TightIdSF*" \
+                "m1TightIDSF*" \
                 "m2TightIsoSF*" \
-                "m2TightIdSF*" \
+                "m2TightIDSF*" \
                 "m3TightIsoSF*" \
-                "m3TightIdSF*" \
+                "m3TightIDSF*" \
                 "pileupSF"
 def getPlotPaths(selection, folder_name, write_log_file):
     if "hep.wisc.edu" in os.environ['HOSTNAME']:
@@ -246,10 +260,6 @@ def savePlot(canvas, plot_path, html_path, branch_name, write_log_file, args):
         if write_log_file:
             makeDirectory("/".join([html_path, "logs"]))
             shutil.copy(log_file, log_file.replace(plot_path, html_path))
-    #for primitive in ROOT.gPad.GetListOfPrimitives():
-    #    primitive.Delete()
-    #for obj in ROOT.gDirectory.GetList():
-    #    obj.Delete()
     del canvas
     ROOT.gROOT.Reset()
 def makeDirectory(path):
