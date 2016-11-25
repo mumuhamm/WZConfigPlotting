@@ -12,7 +12,6 @@ import math
 import sys
 import datetime
 from Utilities.scripts import makeSimpleHtml
-from ScaleFactors.ScaleFactorsHelper import ScaleFactorsHelper
 
 def getComLineArgs():
     parser = UserInput.getDefaultParser()
