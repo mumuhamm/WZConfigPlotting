@@ -1,4 +1,5 @@
 import ROOT
+import math
 import UserInput
 import config_object
 import logging
@@ -80,6 +81,15 @@ class ConfigHistFactory(object):
         config.setAttributes(hist, self.styles[plot_group['Style']])
         object_name = object_name if object_name in self.plot_objects else object_name.split("_")[0]
         config.setAttributes(hist, self.plot_objects[object_name]['Attributes'])
+    def addErrorToHist(self, hist, plot_group_name):
+        # If not a valid plot group, try treating it as file entry
+        plot_group = self.plot_groups[info[plot_group_name]['plot_group']] \
+                if plot_group_name not in self.plot_groups.keys() else self.plot_groups[plot_group_name]
+        if "add_perc_error" in plot_group.keys():
+            for i in range(1, hist.GetNbinsX()+1):
+                add_error = math.sqrt(hist.GetBinContent(i)*hist.Integral())*plot_group["add_perc_error"]
+                error = math.sqrt(hist.GetBinError(i)**2 + add_error**2)
+                hist.SetBinError(i, error)
     def getPlotGroupMembers(self, plot_group):
         logging.debug("Plot Groups are %s" % self.plot_groups.keys())
         if plot_group in self.plot_groups.keys():

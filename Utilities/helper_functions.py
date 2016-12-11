@@ -219,9 +219,8 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
                             - scaleDown_hist.GetBinContent(i))
         maxScaleErr = max(scaleUp_diff, scaleDown_diff)
         err = math.sqrt(hist.GetBinError(i)**2 + maxScaleErr**2)
-        #perc_err = hist.GetBinContent(i)*.1
-        #err = math.sqrt(hist.GetBinError(i)**2 + perc_err**2)
         hist.SetBinError(i, err)
+    config_factory.addErrorToHist(hist, plot_group)
     logging.debug(log_info)
     logging.debug("Hist has %i entries" % hist.GetEntries())
     return hist

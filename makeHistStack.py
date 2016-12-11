@@ -95,6 +95,7 @@ def getStacked(config_factory, selection, filelist, branch_name, channels, addOv
         hist_stack.Add(hist)
         error = array.array('d', [0])
         weighted_events = hist.IntegralAndError(0, hist.GetNbinsX(), error)
+        if not hist.GetSumw2(): hist.Sumw2()
         hist_info[plot_set] = {'raw_events' : raw_events, 
                                'weighted_events' : weighted_events,
                                'error' : 0 if int(raw_events) <= 0 else error[0],
