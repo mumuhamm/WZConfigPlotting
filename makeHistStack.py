@@ -10,6 +10,7 @@ from Utilities.ConfigHistFactory import ConfigHistFactory
 from Utilities.prettytable import PrettyTable
 import math
 import sys
+import array
 import datetime
 from Utilities.scripts import makeSimpleHtml
 
@@ -57,13 +58,14 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
         'Script called at %s\n' % datetime.datetime.now() + \
         'The command was: %s\n' % ' '.join(sys.argv) + \
         '-'*80 + '\n'
-    mc_info = PrettyTable(["Plot Group", "Weighted Events", "Error", "Raw Events"])
+    mc_info = PrettyTable(["Plot Group", "Weighted Events", "Error", "Stat Error", "Raw Events"])
     weighted_events = 0
     total_background = 0
     background_err = 0
     for plot_set, entry in hist_info.iteritems():
         mc_info.add_row([plot_set, round(entry["weighted_events"], 2), 
             round(entry["error"],2),
+            round(entry["stat error"],2),
             entry["raw_events"]])
         weighted_events += entry["weighted_events"]
         if plot_set != "wz":
@@ -91,11 +93,12 @@ def getStacked(config_factory, selection, filelist, branch_name, channels, addOv
                 no_scalefacs)
         raw_events = hist.GetEntries() - 1
         hist_stack.Add(hist)
-        weighted_events = hist.Integral()
+        error = array.array('d', [0])
+        weighted_events = hist.IntegralAndError(0, hist.GetNbinsX(), error)
         hist_info[plot_set] = {'raw_events' : raw_events, 
                                'weighted_events' : weighted_events,
-                               'error' : 0 if int(raw_events) <= 0 else \
-                                    weighted_events/math.sqrt(raw_events)}
+                               'error' : 0 if int(raw_events) <= 0 else error[0],
+                                'stat error' : weighted_events/math.sqrt(raw_events)}
     writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string)
     scale_uncertainty = False
     if not scale_uncertainty:
@@ -121,21 +124,21 @@ def getStacked(config_factory, selection, filelist, branch_name, channels, addOv
         hist_stack.Add(scale_hist_down)
     return hist_stack
 def getListOfFiles(file_set, selection):
-    if file_set == "WZxsec2016-pow" and "preselection" in selection:
-        return ["top", "vvv", "vv-powheg", "dy",
-            "wz-powheg"]
-    elif file_set == "WZxsec2016-pow":
-        return ["top", "vvv", "vv-powheg", "zg", "dy",
-            "wz-powheg"]
-    elif file_set == "WZxsec2016" and "preselection" in selection:
-        return ["top", "vvv", "vv", "zg", "dy",
-            "wz"]
-    elif file_set == "WZxsec2016":
-        return ["top", "vvv", "vv", "zg", "dy",
-            "wz"]
-    elif file_set == "WZVBS":
-        return ["top", "vvv", "vv", "zg", "dy",
-            "wz", "wlljj-ewk"]
+    if "WZxsec2016" in selection:
+        filelist = ["vvv", "top"]
+        filelist.append("vv" if "pow" not in file_set else "vv-powheg")
+        if "preselection" not in selection:
+            filelist.append("zg")
+        drellyan = "dyjets"
+        if "dynlo" in file_set:
+            drellyan = "dy"
+        elif "dylo" in file_set:
+            drellyan = "dy-lo"
+        filelist.append(drellyan)
+        filelist.append("wz-powheg" if "pow" in file_set else "wz")
+        if "vbs" in selection: 
+            filelist.append("wlljj-ewk")
+        return filelist
     return [x.strip() for x in file_set.split(",")]
 
 def main():

@@ -11,8 +11,8 @@ class ConfigHistFactory(object):
         self.dataset_name = dataset_name
         self.info = self.readAllInSet("FileInfo", self.dataset_name)
         self.config = config_object.ConfigObject(self.info)
-        self.mc_info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", "montecarlo.json"]))
-        self.data_info = UserInput.readJson('/'.join([self.manager_path, "FileInfo", "data.json"]))
+        self.mc_info = UserInput.readAllJson('/'.join([self.manager_path, "FileInfo", "montecarlo/*.json"]))
+        self.data_info = UserInput.readAllJson('/'.join([self.manager_path, "FileInfo", "data/*.json"]))
         self.styles = UserInput.readJson('/'.join([self.manager_path, 
             "Styles", "styles.json"]))
         base_name = self.dataset_name.split("/")[0]

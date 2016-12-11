@@ -10,6 +10,7 @@ import logging
 import datetime
 import shutil
 import errno
+import math
 
 def makePlot(hist_stack, data_hist, branch_name, args):
     canvas = ROOT.TCanvas("%s_canvas" % branch_name, branch_name, 1600, 1200) 
@@ -46,7 +47,7 @@ def makePlot(hist_stack, data_hist, branch_name, args):
             error_hist.Draw("same e2")
     offset = ROOT.gPad.GetLeftMargin() - 0.04 if args.legend_left else \
         ROOT.gPad.GetRightMargin() - 0.04 
-    width = .2 if "WZxsec" in args.selection else 0.4
+    width = .2 if "WZxsec" in args.selection else 0.33
     xcoords = [.10+offset, .1+width+offset] if args.legend_left \
         else [.92-width-offset, .92-offset]
     unique_entries = len(set([x.GetFillColor() for x in hists]))
@@ -140,7 +141,7 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1):
         hist_factory[name].update({"histProducer" : histProducer})
     return hist_factory
 def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
-    addOverflow, cut_string="", luminosity=1, no_scalefacs=False):
+    addOverflow, cut_string="", luminosity=1, no_scalefacs=False, scaleUncertainties=True):
     if "Gen" not in selection:
         states = [x.strip() for x in channels.split(",")]
         trees = ["%s/ntuple" % state for state in states]
@@ -156,12 +157,17 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
     bin_info = config_factory.getHistBinInfo(branch_name)
     hist_name = "-".join([plot_group, selection.replace("/", "-"), branch_name.split("_")[0]])
     hist = ROOT.gProof.GetOutputList().FindObject(hist_name)
+    hist = ROOT.gProof.GetOutputList().FindObject(hist_name)
     if hist:
         hist.Delete()
     hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
+    scaleUp_hist = ROOT.TH1D(hist_name+"-scaleUp", hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
+    scaleDown_hist = ROOT.TH1D(hist_name+"-scaleDown", hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
     log_info = ""
     for name, entry in hist_info.iteritems():
         producer = entry["histProducer"]
+        if "weight" in entry.keys():
+            producer.addWeight(entry["weight"])
         log_info += "\n" + "-"*70 +"\nName is %s entry is %s" % (name, entry)
         for tree in trees:
             state = tree.split("/")[0] if "ntuple" in tree else ""
@@ -169,37 +175,108 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
             config_factory.setProofAliases(state)
             cut_string = config_factory.hackInAliases(cut_string)
             if "WZxsec2016" in selection and not "data" in name and not no_scalefacs:
-                print "SCALE FAC EXPR IS ", getScaleFactorExpression(state, "tight", "tight")
-                if cut_string != "":
-                    append_cut = lambda x: "*(%s)" % x if x not in ["", None] else x
-                    weighted_cut_string = "(" + cut_string + ")" \
-                        + append_cut(getScaleFactorExpression(state, "tight", "tight"))
-                else:
-                    weighted_cut_string = getScaleFactorExpression(state, "tight", "tight")
+                scale_expr = getScaleFactorExpression(state, "medium", "tightW")
+                weighted_cut_string = appendCut(cut_string, scale_expr)
             else:
                 weighted_cut_string = cut_string
             producer.setCutString(weighted_cut_string)
-            if "weight" in entry.keys():
-                producer.addWeight(entry["weight"])
             draw_expr = config_factory.getHistDrawExpr(branch_name, name, state)
             logging.debug("Draw expression was %s" % draw_expr)
             proof_name = "-".join([name, "%s#/%s" % (selection.replace("/", "-"), tree)])
             logging.debug("Proof path was %s" % proof_name)
             try:
                 state_hist = producer.produce(draw_expr, proof_name, overflow=addOverflow)
+                if scaleUncertainties and not "data" in name:
+                    producer.setCutString(appendCut(weighted_cut_string,
+                        getQCDScaleUpExpression(selection))
+                    )
+                    scaleUp_statehist = producer.produce(draw_expr, proof_name, overflow=addOverflow)
+                    producer.setCutString(appendCut(weighted_cut_string,
+                        getQCDScaleDownExpression(selection))
+                    )
+                    scaleDown_statehist = producer.produce(draw_expr, proof_name, overflow=addOverflow)
+                    # Ignore scale uncertainties for samples without weights
+                    if scaleUp_statehist.GetEntries() == 0:
+                        scaleUp_statehist = state_statehist
+                    if scaleDown_statehist.GetEntries() == 0:
+                        scaleDown_statehist = state_statehist
+                else:
+                    scaleUp_statehist = state_hist
+                    scaleDown_statehist = state_hist
                 log_info += "\nNumber of events: %f" % state_hist.Integral()
                 hist.Add(state_hist)
+                scaleUp_hist.Add(scaleUp_statehist)
+                scaleDown_hist.Add(scaleDown_statehist)
             except ValueError as error:
                 logging.warning(error)
                 log_info += "\nNumber of events: 0.0" 
         log_info += "total number of events: %f" % hist.Integral()
         config_factory.setHistAttributes(hist, branch_name, plot_group)
+    for i in range(1, hist.GetNbinsX()+1):
+        scaleUp_diff = abs(hist.GetBinContent(i)
+                            - scaleUp_hist.GetBinContent(i))
+        scaleDown_diff = abs(hist.GetBinContent(i)
+                            - scaleDown_hist.GetBinContent(i))
+        maxScaleErr = max(scaleUp_diff, scaleDown_diff)
+        err = math.sqrt(hist.GetBinError(i)**2 + maxScaleErr**2)
+        #perc_err = hist.GetBinContent(i)*.1
+        #err = math.sqrt(hist.GetBinError(i)**2 + perc_err**2)
+        hist.SetBinError(i, err)
     logging.debug(log_info)
     logging.debug("Hist has %i entries" % hist.GetEntries())
     return hist
+def appendCut(cut_string, add_cut):
+    if cut_string != "":
+        append_cut = lambda x: "*(%s)" % x if x not in ["", None] else x
+        return "(" + cut_string + ")" + append_cut(add_cut)
+    else:
+        return add_cut
+
 def getScaleFactorExpression(state, muonId, electronId):
-    if muonId != "tight" and electronId != "tight":
+    if muonId == "tight" and electronId == "tight":
+        return getScaleFactorExpressionAllTight(state)
+    elif muonId == "medium" and electronId == "tightW":
+        return getScaleFactorExpressionMedTightWElec(state)
+    else:
         return "1"
+def getQCDScaleUpExpression(selection):
+    if "WZxsec2016" in selection:
+        return "maxScaleWeight/scaleWeights[0]"
+    else:
+        return "max(LHEweights)"
+def getQCDScaleDownExpression(selection):
+    if "WZxsec2016" in selection:
+        return "minScaleWeight/scaleWeights[0]"
+    else:
+        return "min(LHEweights)"
+def getScaleFactorExpressionMedTightWElec(state):
+    if state == "eee":
+        return "e1MediumIDSF*" \
+                "e2MediumIDSF*" \
+                "e3TightIDSF*" \
+                "pileupSF"
+    elif state == "eem":
+        return "e1MediumIDSF*" \
+                "e2MediumIDSF*" \
+                "mTightIsoSF*" \
+                "mMediumIDSF*" \
+                "pileupSF"
+    elif state == "emm":
+        return "eTightIDSF*" \
+                "m1MediumIDSF*" \
+                "m1TightIsoSF*" \
+                "m2TightIsoSF*" \
+                "m2MediumIDSF*" \
+                "pileupSF"
+    elif state == "mmm":
+        return "m1TightIsoSF*" \
+                "m1MediumIDSF*" \
+                "m2TightIsoSF*" \
+                "m2MediumIDSF*" \
+                "m3TightIsoSF*" \
+                "m3MediumIDSF*" \
+                "pileupSF"
+def getScaleFactorExpressionAllTight(state):
     if state == "eee":
         return "e1TightIDSF*" \
                 "e2TightIDSF*" \
