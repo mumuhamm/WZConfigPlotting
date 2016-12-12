@@ -62,15 +62,33 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
     weighted_events = 0
     total_background = 0
     background_err = 0
+    total_err2 = 0
+    sigbkgd = 0
+    sigbkgd_err = 0
+    signal = 0
+    signal_err = 0
+    likelihood = 0
+    likelihood_err = 0
     for plot_set, entry in hist_info.iteritems():
         mc_info.add_row([plot_set, round(entry["weighted_events"], 2), 
             round(entry["error"],2),
             round(entry["stat error"],2),
             entry["raw_events"]])
         weighted_events += entry["weighted_events"]
-        if plot_set != "wz":
+        total_err2 += entry["error"]**2
+        if "wz" not in plot_set:
             total_background += entry["weighted_events"]
             background_err += entry["error"]*entry["error"]
+        else:
+            signal += entry["weighted_events"]
+            signal_err += entry["error"]
+    total_err = math.sqrt(total_err2)
+    likelihood = signal/math.sqrt(weighted_events)
+    likelihood_err = likelihood*math.sqrt((signal_err/signal)**2 + \
+        (0.5*total_err/weighted_events)**2)
+    sigbkgd = signal/weighted_events
+    sigbkgd_err = sigbkgd*math.sqrt(
+        (signal_err/signal)**2 + (total_err/weighted_events)**2)
     with open("temp.txt", "w") as mc_file:
         mc_file.write(meta_info)
         mc_file.write("Selection: %s" % selection)
@@ -82,6 +100,10 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
             round(math.sqrt(sum([x["error"]*x["error"] for x in hist_info.values()])), 2)))
         mc_file.write("\nTotal sum of background Monte Carlo: %0.2f +/- %0.2f" % (round(total_background, 2), 
             round(math.sqrt(background_err), 2)))
+        mc_file.write("\nRatio S/(S+B): %0.2f +/- %0.2f" % (round(sigbkgd, 2), 
+            round(sigbkgd_err, 2)))
+        mc_file.write("\nRatio S/sqrt(S+B): %0.2f +/- %0.2f" % (round(likelihood, 2), 
+            round(likelihood_err, 2)))
 def getStacked(config_factory, selection, filelist, branch_name, channels, addOverflow,
                cut_string="", luminosity=1, no_scalefacs=False):
     hist_stack = ROOT.THStack("stack", "")
