@@ -17,7 +17,8 @@ def makePlot(hist_stack, data_hist, branch_name, args):
     hists = hist_stack.GetHists()
     hist_stack.Draw("nostack hist" if args.nostack else "hist")
     if data_hist:
-        data_hist.Draw("e1 same")
+        data_hist.Draw("same")
+        #hist_stack.Add(data_hist)
     if not args.no_decorations:
         ROOT.dotrootImport('kdlong/CMSPlotDecorations')
         scale_label = "Normalized to Unity" if args.luminosity < 0 else \
@@ -155,14 +156,14 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
         filelist = [plot_group]
     hist_info = getHistFactory(config_factory, selection, filelist, luminosity)
     bin_info = config_factory.getHistBinInfo(branch_name)
-    hist_name = "-".join([plot_group, selection.replace("/", "-"), branch_name.split("_")[0]])
+    hist_name = "_".join([plot_group, selection.replace("/", "_"), branch_name.split("_")[0]])
     hist = ROOT.gProof.GetOutputList().FindObject(hist_name)
     hist = ROOT.gProof.GetOutputList().FindObject(hist_name)
     if hist:
         hist.Delete()
     hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
-    scaleUp_hist = ROOT.TH1D(hist_name+"-scaleUp", hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
-    scaleDown_hist = ROOT.TH1D(hist_name+"-scaleDown", hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
+    scaleUp_hist = ROOT.TH1D(hist_name+"_scaleUp", hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
+    scaleDown_hist = ROOT.TH1D(hist_name+"_scaleDown", hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
     log_info = ""
     for name, entry in hist_info.iteritems():
         producer = entry["histProducer"]
@@ -182,7 +183,7 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
             producer.setCutString(weighted_cut_string)
             draw_expr = config_factory.getHistDrawExpr(branch_name, name, state)
             logging.debug("Draw expression was %s" % draw_expr)
-            proof_name = "-".join([name, "%s#/%s" % (selection.replace("/", "-"), tree)])
+            proof_name = "_".join([name, "%s#/%s" % (selection.replace("/", "_"), tree)])
             logging.debug("Proof path was %s" % proof_name)
             try:
                 state_hist = producer.produce(draw_expr, proof_name, overflow=addOverflow)
@@ -327,8 +328,9 @@ def savePlot(canvas, plot_path, html_path, branch_name, write_log_file, args):
     if write_log_file:
         log_file = "/".join([plot_path, "logs", "%s_event_info.log" % branch_name])
         shutil.move("temp.txt", log_file) 
-    canvas.Print("/".join([plot_path, branch_name + ".pdf"]))
     canvas.Print("/".join([plot_path, branch_name + ".root"]))
+    canvas.Print("/".join([plot_path, branch_name + ".C"]))
+    canvas.Print("/".join([plot_path, branch_name + ".pdf"]))
     if not args.no_html:
         makeDirectory(html_path)
         canvas.Print("/".join([html_path, branch_name + ".pdf"]))

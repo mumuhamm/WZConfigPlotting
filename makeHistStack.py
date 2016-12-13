@@ -147,7 +147,7 @@ def getStacked(config_factory, selection, filelist, branch_name, channels, addOv
         hist_stack.Add(scale_hist_down)
     return hist_stack
 def getListOfFiles(file_set, selection):
-    if "WZxsec2016" in selection:
+    if "WZxsec2016" in file_set:
         filelist = ["vvv", "top"]
         filelist.append("vv" if "pow" not in file_set else "vv-powheg")
         if "preselection" not in selection:
@@ -159,8 +159,8 @@ def getListOfFiles(file_set, selection):
             drellyan = "dy-lo"
         filelist.append(drellyan)
         filelist.append("wz-powheg" if "pow" in file_set else "wz")
-        if "vbs" in selection: 
-            filelist.append("wlljj-ewk")
+        if "vbs" in file_set: 
+            filelist.append("wzjj-aqgcfm__fm0-4")
         return filelist
     return [x.strip() for x in file_set.split(",")]
 
