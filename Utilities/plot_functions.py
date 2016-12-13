@@ -79,8 +79,8 @@ def splitCanvas(oldcanvas, stack_name, data_name, ratio_text, ratio_range) :
     hist_stack = stackPad.GetPrimitive(stack_name)
     hists = hist_stack.GetHists()
     
-    hist1 = hists[0]
-    hist2 = stackPad.GetPrimitive(data_name)
+    hist1 = hists[0].Clone()
+    hist2 = stackPad.GetPrimitive(data_name).Clone()
     compare_data = False
     if not isinstance(hist2, ROOT.TH1):
         if len(hists) < 2 and not compare_data:
@@ -90,6 +90,10 @@ def splitCanvas(oldcanvas, stack_name, data_name, ratio_text, ratio_range) :
     else:
         compare_data = True
         for hist in hists[1:]:
+            # Hacky hacky hack hack
+            # (Don't include aTGC in ratio)
+            if "aqgc" in hist.GetName():
+                continue
             hist1.Add(hist)
         if not hist2:
             logging.warning("No data hist found. Cannot form ratio")
@@ -130,6 +134,7 @@ def splitCanvas(oldcanvas, stack_name, data_name, ratio_text, ratio_range) :
 
     for item in [stackPad, ratioPad, ratio, line] :
         ROOT.SetOwnership(item, False)
+    canvas.GetListOfPrimitives().SetOwner(True)
     return canvas
 # Also from Nick Smith
 def recursePrimitives(tobject, function, *fargs) :
