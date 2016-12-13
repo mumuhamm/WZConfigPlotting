@@ -17,8 +17,7 @@ def makePlot(hist_stack, data_hist, branch_name, args):
     hists = hist_stack.GetHists()
     hist_stack.Draw("nostack hist" if args.nostack else "hist")
     if data_hist:
-        data_hist.Draw("same")
-        #hist_stack.Add(data_hist)
+        data_hist.Draw("e1 same")
     if not args.no_decorations:
         ROOT.dotrootImport('kdlong/CMSPlotDecorations')
         scale_label = "Normalized to Unity" if args.luminosity < 0 else \
@@ -33,15 +32,10 @@ def makePlot(hist_stack, data_hist, branch_name, args):
         hists[0].GetXaxis().GetTitle())
     hist_stack.GetHistogram().SetLabelSize(0.04)
     hist_stack.SetMinimum(hists[0].GetMinimum()*args.scaleymin)
-    #if hist_stack.GetMaximum() < hists[0].GetMaximum():
     # Adding an arbirary factor of 100 here so the scaling doesn't cut off info from
     # Hists. Not applied when lumi < 1This should be fixed
     lumi = args.luminosity/100 if args.luminosity > 0 else 1
     hist_stack.SetMaximum(hists[0].GetMaximum()*args.scaleymax*lumi)
-    #else:
-    #    new_max = 1.1*hist_stack.GetMaximum() if not data_hist else \
-    #            1.1*max(data_hist.GetMaximum(), hist_stack.GetMaximum()) 
-    #    hist_stack.SetMaximum(new_max)
     if not args.no_errors:
         histErrors = getHistStatErrors(hist_stack, args.nostack)
         for error_hist in histErrors:
