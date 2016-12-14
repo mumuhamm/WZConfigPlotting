@@ -36,10 +36,18 @@ def makePlot(hist_stack, data_hist, branch_name, args):
     # Hists. Not applied when lumi < 1This should be fixed
     lumi = args.luminosity/100 if args.luminosity > 0 else 1
     hist_stack.SetMaximum(hists[0].GetMaximum()*args.scaleymax*lumi)
-    if not args.no_errors:
-        histErrors = getHistStatErrors(hist_stack, args.nostack)
+    if "none" not in args.uncertainties:
+        histErrors = getHistErrors(hist_stack, args.nostack)
         for error_hist in histErrors:
             error_hist.Draw("same e2")
+            error_title = "Stat. Unc."
+            if "all" in args.uncertainties:
+                error_title = "Stat.#oplusSyst."
+            elif "scale" in args.uncertainties:
+                error_title = "Stat.#oplusScale"
+            error_hist.SetTitle(error_title)
+    else:
+        histErrors = []
     offset = ROOT.gPad.GetLeftMargin() - 0.04 if args.legend_left else \
         ROOT.gPad.GetRightMargin() - 0.04 
     width = .2 if "WZxsec" in args.selection else 0.33
@@ -67,7 +75,7 @@ def makePlot(hist_stack, data_hist, branch_name, args):
             text_box.AddText(line)
         text_box.Draw()
         ROOT.SetOwnership(text_box, False)
-    legend = getPrettyLegend(hist_stack, data_hist, coords)
+    legend = getPrettyLegend(hist_stack, data_hist, histErrors, coords)
     legend.Draw()
     if not args.no_ratio:
         canvas = plotter.splitCanvas(canvas, hist_stack.GetName(), 
@@ -76,10 +84,10 @@ def makePlot(hist_stack, data_hist, branch_name, args):
                 args.ratio_range
         )
     return canvas
-def getHistStatErrors(hist_stack, separate):
+def getHistErrors(hist_stack, separate):
     histErrors = []
     for hist in hist_stack.GetHists():
-        error_hist = plotter.getHistStatErrors(hist)
+        error_hist = plotter.getHistErrors(hist)
         if separate:
             error_hist.SetFillColor(hist.GetLineColor())
             histErrors.append(error_hist)
@@ -90,7 +98,7 @@ def getHistStatErrors(hist_stack, separate):
             else:
                 histErrors[0].Add(error_hist)
     return histErrors
-def getPrettyLegend(hist_stack, data_hist, coords):
+def getPrettyLegend(hist_stack, data_hist, error_hists, coords):
     hists = hist_stack.GetHists()
     legend = ROOT.TLegend(coords[0], coords[1], coords[2], coords[3])
     legend.SetFillColor(0)
@@ -101,6 +109,8 @@ def getPrettyLegend(hist_stack, data_hist, coords):
         if hist.GetTitle() not in hist_names:
             legend.AddEntry(hist, hist.GetTitle(), "f")
         hist_names.append(hist.GetTitle())
+    for error_hist in error_hists:
+        legend.AddEntry(error_hist, error_hist.GetTitle(), "f")
     return legend
 def getHistFactory(config_factory, selection, filelist, luminosity=1):
     if "Gen" not in selection:
@@ -136,7 +146,7 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1):
         hist_factory[name].update({"histProducer" : histProducer})
     return hist_factory
 def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
-    addOverflow, cut_string="", luminosity=1, no_scalefacs=False, scaleUncertainties=True):
+    addOverflow, cut_string="", luminosity=1, no_scalefacs=False, uncertainties="none"):
     if "Gen" not in selection:
         states = [x.strip() for x in channels.split(",")]
         trees = ["%s/ntuple" % state for state in states]
@@ -181,7 +191,7 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
             logging.debug("Proof path was %s" % proof_name)
             try:
                 state_hist = producer.produce(draw_expr, proof_name, overflow=addOverflow)
-                if scaleUncertainties and not "data" in name:
+                if ("scale" in uncertainties or uncertainties == "all") and not "data" in name:
                     producer.setCutString(appendCut(weighted_cut_string,
                         getQCDScaleUpExpression(selection))
                     )
@@ -215,7 +225,8 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
         maxScaleErr = max(scaleUp_diff, scaleDown_diff)
         err = math.sqrt(hist.GetBinError(i)**2 + maxScaleErr**2)
         hist.SetBinError(i, err)
-    config_factory.addErrorToHist(hist, plot_group)
+    if uncertainties == "all":
+        config_factory.addErrorToHist(hist, plot_group)
     logging.debug(log_info)
     logging.debug("Hist has %i entries" % hist.GetEntries())
     return hist

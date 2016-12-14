@@ -87,7 +87,7 @@ class ConfigHistFactory(object):
                 if plot_group_name not in self.plot_groups.keys() else self.plot_groups[plot_group_name]
         if "add_perc_error" in plot_group.keys():
             for i in range(1, hist.GetNbinsX()+1):
-                scale_fac = hist.GetBinContent(i)*hist.Integral() 
+                scale_fac = hist.GetBinContent(i)
                 if scale_fac < 0:
                     scale_fac = 0
                 add_error = math.sqrt(scale_fac*plot_group["add_perc_error"])

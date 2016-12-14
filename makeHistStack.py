@@ -105,14 +105,14 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
         mc_file.write("\nRatio S/sqrt(S+B): %0.2f +/- %0.2f" % (round(likelihood, 2), 
             round(likelihood_err, 2)))
 def getStacked(config_factory, selection, filelist, branch_name, channels, addOverflow,
-               cut_string="", luminosity=1, no_scalefacs=False):
+               cut_string="", luminosity=1, no_scalefacs=False, uncertainties="none"):
     hist_stack = ROOT.THStack("stack", "")
     hist_info = {}
     for plot_set in filelist:
         print "plot set is %s " % plot_set 
         hist = helper.getConfigHist(config_factory, plot_set, selection,  
                 branch_name, channels, addOverflow, cut_string, luminosity,
-                no_scalefacs)
+                no_scalefacs, uncertainties)
         raw_events = hist.GetEntries() - 1
         hist_stack.Add(hist)
         error = array.array('d', [0])
@@ -121,7 +121,8 @@ def getStacked(config_factory, selection, filelist, branch_name, channels, addOv
         hist_info[plot_set] = {'raw_events' : raw_events, 
                                'weighted_events' : weighted_events,
                                'error' : 0 if int(raw_events) <= 0 else error[0],
-                                'stat error' : weighted_events/math.sqrt(raw_events)}
+                                'stat error' : weighted_events/math.sqrt(raw_events) \
+                                    if raw_events != 0 else 0}
     writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string)
     scale_uncertainty = False
     if not scale_uncertainty:
@@ -184,7 +185,7 @@ def main():
     for branch_name in branches:
         hist_stack = getStacked(config_factory, args.selection, filelist, 
                 branch_name, args.channels, not args.no_overflow, cut_string,
-                args.luminosity, args.no_scalefactors)
+                args.luminosity, args.no_scalefactors, args.uncertainties)
         if not args.no_data:
             data_hist = helper.getConfigHist(config_factory, "data", args.selection, 
                     branch_name, args.channels, not args.no_overflow, cut_string)

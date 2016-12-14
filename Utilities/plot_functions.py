@@ -117,6 +117,7 @@ def splitCanvas(oldcanvas, stack_name, data_name, ratio_text, ratio_range) :
     hist_stack.GetXaxis().SetLabelOffset(999)
     
     ratio.GetYaxis().SetTitle(ratio_text)
+    ratio.GetYaxis().SetTitleOffset(1.4)
     ratio.GetYaxis().CenterTitle()
     ratio.GetYaxis().SetRangeUser(float(ratio_range[0]), float(ratio_range[1]))
     ratio.GetYaxis().SetNdivisions(305)
@@ -166,7 +167,7 @@ def readStyle(canvas) :
     canvas.UseCurrentStyle()
     style.SetIsReading(False)
     return style
-def getHistStatErrors(hist):
+def getHistErrors(hist):
     histErrors = hist.Clone()
     histErrors.SetName(hist.GetName() + "_errors")
     histErrors.SetDirectory(0)
