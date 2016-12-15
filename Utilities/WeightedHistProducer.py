@@ -19,10 +19,10 @@ class WeightedHistProducer(object):
         self.cut_string = cut_string
     def addWeight(self, weight):
         append_cut = lambda x: "*(%s)" % x if x not in ["", None] else x
-        if self.cut_string not in ["", None]:
-            self.cut_string += append_cut(weight)
+        if self.weight_branch not in ["", None]:
+            self.weight_branch += append_cut(weight)
         else:
-            self.cut_string = weight
+            self.weight_branch = weight
     def getCrossSection(self):
         return self.weight_info.getCrossSection()
     def setLumi(self, lumi, units='pb-1'):

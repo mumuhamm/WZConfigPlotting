@@ -63,12 +63,8 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
     total_background = 0
     background_err = 0
     total_err2 = 0
-    sigbkgd = 0
-    sigbkgd_err = 0
     signal = 0
     signal_err = 0
-    likelihood = 0
-    likelihood_err = 0
     for plot_set, entry in hist_info.iteritems():
         mc_info.add_row([plot_set, round(entry["weighted_events"], 2), 
             round(entry["error"],2),
@@ -83,12 +79,14 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
             signal += entry["weighted_events"]
             signal_err += entry["error"]
     total_err = math.sqrt(total_err2)
-    likelihood = signal/math.sqrt(weighted_events)
-    likelihood_err = likelihood*math.sqrt((signal_err/signal)**2 + \
-        (0.5*total_err/weighted_events)**2)
-    sigbkgd = signal/weighted_events
-    sigbkgd_err = sigbkgd*math.sqrt(
-        (signal_err/signal)**2 + (total_err/weighted_events)**2)
+    likelihood = 0 if weighted_events <= 0 else \
+        signal/math.sqrt(weighted_events)
+    likelihood_err = 0 if signal <= 0 or weighted_events <= 0 else \
+        likelihood*math.sqrt((signal_err/signal)**2 + \
+            (0.5*total_err/weighted_events)**2)
+    sigbkgd = 0 if weighted_events <= 0 else signal/weighted_events
+    sigbkgd_err = 0 if signal <= 0 or weighted_events <= 0 else \
+        sigbkgd*math.sqrt((signal_err/signal)**2 + (total_err/weighted_events)**2)
     with open("temp.txt", "w") as mc_file:
         mc_file.write(meta_info)
         mc_file.write("Selection: %s" % selection)
@@ -121,8 +119,9 @@ def getStacked(config_factory, selection, filelist, branch_name, channels, addOv
         hist_info[plot_set] = {'raw_events' : raw_events, 
                                'weighted_events' : weighted_events,
                                'error' : 0 if int(raw_events) <= 0 else error[0],
-                                'stat error' : weighted_events/math.sqrt(raw_events) \
-                                    if raw_events != 0 else 0}
+                                'stat error' : 0 if raw_events <= 0 else \
+                                    weighted_events/math.sqrt(raw_events) 
+        }
     writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string)
     scale_uncertainty = False
     if not scale_uncertainty:
@@ -161,7 +160,8 @@ def getListOfFiles(file_set, selection):
         filelist.append(drellyan)
         filelist.append("wz-powheg" if "pow" in file_set else "wz")
         if "vbs" in file_set: 
-            filelist.append("wzjj-aqgcfm__fm0-4")
+            #filelist.append("wzjj-aqgcfm__fm0-4")
+            filelist.append("wzjj-aqgcfm__sm")
         return filelist
     return [x.strip() for x in file_set.split(",")]
 

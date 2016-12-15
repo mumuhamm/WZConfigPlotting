@@ -246,14 +246,20 @@ def getScaleFactorExpression(state, muonId, electronId):
         return "1"
 def getQCDScaleUpExpression(selection):
     if "WZxsec2016" in selection:
-        return "maxScaleWeight/scaleWeights[0]"
+        return "scaleWeights[8]/scaleWeights[0]"
+    elif "GenAnalysis" in selection:
+        #return "LHEweights[0] != 0 ? maxScaleWeight/LHEweights[0] : 1"
+        return "maxScaleWeight"
     else:
-        return "max(LHEweights)"
+        return "1"
 def getQCDScaleDownExpression(selection):
     if "WZxsec2016" in selection:
-        return "minScaleWeight/scaleWeights[0]"
+        #return "minScaleWeight/scaleWeights[0]"
+        return "scaleWeights[4]/scaleWeights[0]"
+    elif "GenAnalysis" in selection:
+        return "minScaleWeight"
     else:
-        return "min(LHEweights)"
+        return "1"
 def getScaleFactorExpressionMedTightWElec(state):
     if state == "eee":
         return "e1MediumIDSF*" \

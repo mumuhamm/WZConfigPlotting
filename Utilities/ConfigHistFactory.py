@@ -83,7 +83,7 @@ class ConfigHistFactory(object):
         config.setAttributes(hist, self.plot_objects[object_name]['Attributes'])
     def addErrorToHist(self, hist, plot_group_name):
         # If not a valid plot group, try treating it as file entry
-        plot_group = self.plot_groups[info[plot_group_name]['plot_group']] \
+        plot_group = self.plot_groups[self.info[plot_group_name]['plot_group']] \
                 if plot_group_name not in self.plot_groups.keys() else self.plot_groups[plot_group_name]
         if "add_perc_error" in plot_group.keys():
             for i in range(1, hist.GetNbinsX()+1):
