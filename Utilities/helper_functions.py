@@ -206,18 +206,17 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
                         if scale_statehist.GetEntries() == 0:
                             scale_statehist = state_hist
                         scale_hists[i].Add(scale_statehist)
-                else:
-                    scale_hists.append(state_hist)
-
             except ValueError as error:
                 logging.warning(error)
                 log_info += "\nNumber of events: 0.0" 
+        if len(scale_hists) == 0:
+            scale_hists.append(hist)
         log_info += "total number of events: %f" % hist.Integral()
         config_factory.setHistAttributes(hist, branch_name, plot_group)
     for i in range(1, hist.GetNbinsX()+1):
-        maxScale = max([hist.GetBinContent(i) for hist in scale_hists])
-        minScale = min([hist.GetBinContent(i) for hist in scale_hists])
-        scaleUp_diff = maxScale - hist.GetBinContent(i) - maxScale
+        maxScale = max([h.GetBinContent(i) for h in scale_hists])
+        minScale = min([h.GetBinContent(i) for h in scale_hists])
+        scaleUp_diff = maxScale - hist.GetBinContent(i)
         scaleDown_diff = hist.GetBinContent(i) - minScale
         # Just symmetric errors for now
         maxScaleErr = max(scaleUp_diff, scaleDown_diff)
@@ -257,6 +256,19 @@ def getQCDScaleExpressions(selection):
                 "LHEweights[3]/LHEweights[0]",
                 "LHEweights[4]/LHEweights[0]",
                 "LHEweights[6]/LHEweights[0]",
+                "LHEweights[8]/LHEweights[0]",
+        ]
+    else:
+        return ["1"]
+# Consider only symmetric variations for symmplicity,
+# only need to dram 2 rather than 6 variations
+def getSymmetricQCDScaleExpressions(selection):
+    if "WZxsec2016" in selection:
+        return ["scaleWeights[4]/scaleWeights[0]",
+            "scaleWeights[8]/scaleWeights[0]",
+        ]
+    elif "GenAnalysis" in selection:
+        return ["LHEweights[4]/LHEweights[0]",
                 "LHEweights[8]/LHEweights[0]",
         ]
     else:
