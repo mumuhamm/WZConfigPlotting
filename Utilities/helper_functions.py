@@ -214,12 +214,17 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
         log_info += "total number of events: %f" % hist.Integral()
         config_factory.setHistAttributes(hist, branch_name, plot_group)
     for i in range(1, hist.GetNbinsX()+1):
-        maxScale = max([h.GetBinContent(i) for h in scale_hists])
-        minScale = min([h.GetBinContent(i) for h in scale_hists])
-        scaleUp_diff = maxScale - hist.GetBinContent(i)
-        scaleDown_diff = hist.GetBinContent(i) - minScale
+        try:
+            maxScale = max([h.GetBinContent(i) for h in scale_hists \
+                    if not h.GetBinContent(i) == 0])
+            minScale = min([h.GetBinContent(i) for h in scale_hists \
+                    if not h.GetBinContent(i) == 0])
+            scaleUp_diff = maxScale - hist.GetBinContent(i)
+            scaleDown_diff = hist.GetBinContent(i) - minScale
+            maxScaleErr = max(scaleUp_diff, scaleDown_diff)
+        except:
+            maxScaleErr = 0
         # Just symmetric errors for now
-        maxScaleErr = max(scaleUp_diff, scaleDown_diff)
         err = math.sqrt(hist.GetBinError(i)**2 + maxScaleErr**2)
         hist.SetBinError(i, err)
     if uncertainties == "all":
@@ -275,10 +280,16 @@ def getSymmetricQCDScaleExpressions(selection):
         return ["1"]
 def getQCDScaleDownExpression(selection):
     if "WZxsec2016" in selection:
-        #return "minScaleWeight/scaleWeights[0]"
-        return "scaleWeights[4]/scaleWeights[0]"
+        return "minScaleWeight/scaleWeights[0]"
     elif "GenAnalysis" in selection:
         return "minScaleWeight"
+    else:
+        return "1"
+def getQCDScaleUpExpression(selection):
+    if "WZxsec2016" in selection:
+        return "maxScaleWeight/scaleWeights[0]"
+    elif "GenAnalysis" in selection:
+        return "maxScaleWeight"
     else:
         return "1"
 def getScaleFactorExpressionMedTightWElec(state):
