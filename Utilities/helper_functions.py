@@ -87,6 +87,10 @@ def makePlot(hist_stack, data_hist, branch_name, args):
 def getHistErrors(hist_stack, separate):
     histErrors = []
     for hist in hist_stack.GetHists():
+        # Only a temporary solution. Really these need to be 
+        # separate hists and not part of the stack
+        if "wzjj" in hist.GetName() or "wlljj" in hist.GetName():
+            continue
         error_hist = plotter.getHistErrors(hist)
         if separate:
             error_hist.SetFillColor(hist.GetLineColor())

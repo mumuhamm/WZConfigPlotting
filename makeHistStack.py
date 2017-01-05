@@ -160,8 +160,13 @@ def getListOfFiles(file_set, selection):
         filelist.append(drellyan)
         filelist.append("wz-powheg" if "pow" in file_set else "wz")
         if "vbs" in file_set: 
-            #filelist.append("wzjj-aqgcfm__fm0-4")
-            filelist.append("wzjj-aqgcfm__sm")
+            #filelist.append("wzjj-aqgcfm__sm")
+            if "nlo" in file_set:
+                filelist.append("wzjj-vbfnlo")
+            else:
+                filelist.append("wlljj-ewk")
+        elif "aqgc" in file_set:
+            filelist.append("wzjj-aqgcfm__fm0-4")
         return filelist
     return [x.strip() for x in file_set.split(",")]
 
