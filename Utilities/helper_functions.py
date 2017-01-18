@@ -156,6 +156,12 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
         trees = ["%s/ntuple" % state for state in states]
     else:
         trees = ["analyze%s/Ntuple" % ("ZZ" if "ZZ" in selection else "WZ")]
+        if channels = "eee,mmm,eem,emm":
+            break
+        chan_cuts = []
+        for chan in channels.split(","): 
+            chan_cuts.append(getGenChannelCut(chan))
+        cut_string = appendCut(cut_string, " || ".join(chan_cuts))
     try:
         filelist = config_factory.getPlotGroupMembers(plot_group)
     except ValueError as e:
@@ -368,6 +374,21 @@ def getPlotPaths(selection, folder_name, write_log_file):
         makeDirectory("/".join([plot_path, "logs"]))
     html_path = plot_path.replace(storage_area, html_area)
     return (plot_path, html_path)
+def getGenChannelCut(channel):
+    cut_string = ""
+    if channel == "eem":
+        cut_string = "((abs(l1pdgId) == 11 && abs(l2pdgId) == 11 && abs(l3pdgId) == 13)" \
+            " || (abs(l1pdgId) == 11 && abs(l2pdgId) == 13 && abs(l3pdgId) == 11)" \
+            " || (abs(l1pdgId) == 13 && abs(l2pdgId) == 11 && abs(l3pdgId) == 11))"
+    elif channel == "emm":
+        cut_string = "((abs(l1pdgId) == 13 && abs(l2pdgId) == 13 && abs(l3pdgId) == 11)" \
+            " || (abs(l1pdgId) == 13 && abs(l2pdgId) == 11 && abs(l3pdgId) == 13)" \
+            " || (abs(l1pdgId) == 11 && abs(l2pdgId) == 13 && abs(l3pdgId) == 13))"
+    elif channel == "eee":
+        cut_string = "(abs(l1pdgId) == 11 && abs(l2pdgId) == 11 && abs(l3pdgId) == 11)"
+    elif channel == "mmm":
+        cut_string = "(abs(l1pdgId) == 13 && abs(l2pdgId) == 13 && abs(l3pdgId) == 13)"
+    return cut_string
 def savePlot(canvas, plot_path, html_path, branch_name, write_log_file, args):
     if args.output_file != "":
         canvas.Print(args.output_file)
