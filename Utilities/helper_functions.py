@@ -156,12 +156,11 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
         trees = ["%s/ntuple" % state for state in states]
     else:
         trees = ["analyze%s/Ntuple" % ("ZZ" if "ZZ" in selection else "WZ")]
-        if channels = "eee,mmm,eem,emm":
-            break
-        chan_cuts = []
-        for chan in channels.split(","): 
-            chan_cuts.append(getGenChannelCut(chan))
-        cut_string = appendCut(cut_string, " || ".join(chan_cuts))
+        if channels != "eee,mmm,eem,emm":
+            chan_cuts = []
+            for chan in channels.split(","): 
+                chan_cuts.append(getGenChannelCut(chan))
+            cut_string = appendCut(cut_string, " || ".join(chan_cuts))
     try:
         filelist = config_factory.getPlotGroupMembers(plot_group)
     except ValueError as e:

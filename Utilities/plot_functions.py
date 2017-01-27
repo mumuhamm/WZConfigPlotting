@@ -92,7 +92,8 @@ def splitCanvas(oldcanvas, stack_name, data_name, ratio_text, ratio_range) :
         for hist in hists[1:]:
             # Hacky hacky hack hack
             # (Don't include WZjj signal in ratio)
-            if "wzjj" in hist.GetName() or "wlljj" in hist.GetName():
+            if "wzjj" in hist.GetName() or "wlljj" in hist.GetName() or \
+                    "atgc" in hist.GetName() or "aqgc" in hist.GetName():
                 continue
             hist1.Add(hist)
         if not hist2:

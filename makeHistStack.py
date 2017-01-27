@@ -149,6 +149,7 @@ def getStacked(config_factory, selection, filelist, branch_name, channels, addOv
 def getListOfFiles(file_set, selection):
     if "WZxsec2016" in file_set:
         filelist = ["vvv", "top"]
+        #filelist = ["vvv", "top_notzq", "tzq"]
         filelist.append("vv" if "pow" not in file_set else "vv-powheg")
         if "preselection" not in selection:
             filelist.append("zg")
@@ -159,6 +160,8 @@ def getListOfFiles(file_set, selection):
             drellyan = "dy-lo"
         filelist.append(drellyan)
         filelist.append("wz-powheg" if "pow" in file_set else "wz")
+        if "atgc" in file_set: 
+            filelist.append("wz-atgc")
         if "vbs" in file_set: 
             #filelist.append("wzjj-aqgcfm__sm")
             if "nlo" in file_set:
@@ -192,7 +195,7 @@ def main():
                 branch_name, args.channels, not args.no_overflow, cut_string,
                 args.luminosity, args.no_scalefactors, args.uncertainties)
         if not args.no_data:
-            data_hist = helper.getConfigHist(config_factory, "data", args.selection, 
+            data_hist = helper.getConfigHist(config_factory, "data_2016", args.selection, 
                     branch_name, args.channels, not args.no_overflow, cut_string)
             with open("temp.txt", "a") as events_log_file:
                 events_log_file.write("\nNumber of events in data: %i" % data_hist.Integral())

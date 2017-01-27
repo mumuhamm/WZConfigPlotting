@@ -29,9 +29,10 @@ class ConfigHistFactory(object):
                  self.dataset_name, base_name)
         self.plot_objects = UserInput.readJson(object_file)
     def readAllInSet(self, object_type, base_name):
-        info = {}
+        info = UserInput.readJson('/'.join([self.manager_path, 
+                object_type, "%s.json" % base_name]))
         for file_name in glob.glob('/'.join([self.manager_path, 
-                object_type, "%s*.json" % base_name])):
+                object_type, "%s_*.json" % base_name])):
             info.update(UserInput.readJson(file_name))
         return info
     def getHistDrawExpr(self, object_name, dataset_name, channel):
