@@ -49,6 +49,9 @@ def getComLineArgs():
                         help="Ratio min ratio max (default 0.5 1.5)")
     parser.add_argument("--scalexmax", type=float, default=1.0,
                         help="Scale default xmax by this amount")
+    parser.add_argument("--blinding", type=list, default=["Mass < 400",
+        "Pt < 200", "mjj < 500", "dEtajj < 2.5", "MTWZ < 400"],
+        help="Blinding cuts to apply (only to that distribution)")
     return parser.parse_args()
 
 log_info = ""
@@ -102,14 +105,14 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
             round(sigbkgd_err, 2)))
         mc_file.write("\nRatio S/sqrt(S+B): %0.2f +/- %0.2f" % (round(likelihood, 2), 
             round(likelihood_err, 2)))
-def getStacked(config_factory, selection, filelist, branch_name, channels, addOverflow,
+def getStacked(config_factory, selection, filelist, branch_name, channels, blinding, addOverflow,
                cut_string="", luminosity=1, no_scalefacs=False, uncertainties="none"):
     hist_stack = ROOT.THStack("stack", "")
     hist_info = {}
     for plot_set in filelist:
         print "plot set is %s " % plot_set 
         hist = helper.getConfigHist(config_factory, plot_set, selection,  
-                branch_name, channels, addOverflow, cut_string, luminosity,
+                branch_name, channels, blinding, addOverflow, cut_string, luminosity,
                 no_scalefacs, uncertainties)
         raw_events = hist.GetEntries() - 1
         hist_stack.Add(hist)
@@ -192,16 +195,21 @@ def main():
     (plot_path, html_path) = helper.getPlotPaths(args.selection, args.folder_name, True)
     for branch_name in branches:
         hist_stack = getStacked(config_factory, args.selection, filelist, 
-                branch_name, args.channels, not args.no_overflow, cut_string,
+                branch_name, args.channels, args.blinding, not args.no_overflow, cut_string,
                 args.luminosity, args.no_scalefactors, args.uncertainties)
         if not args.no_data:
             data_hist = helper.getConfigHist(config_factory, "data_2016", args.selection, 
-                    branch_name, args.channels, not args.no_overflow, cut_string)
+                    branch_name, args.channels, args.blinding, not args.no_overflow, cut_string)
             with open("temp.txt", "a") as events_log_file:
                 events_log_file.write("\nNumber of events in data: %i" % data_hist.Integral())
         else:
             data_hist = 0
-        canvas = helper.makePlot(hist_stack, data_hist, branch_name, args)
+        if len(args.signal_plots) > 0:
+            signal_stack = helper.getConfigHist(config_factory, "wzjj-aqgcfm__sm", args.selection, 
+                    branch_name, args.channels, args.blinding, not args.no_overflow, cut_string)
+        else:
+            signal_stack = 0
+        canvas = helper.makePlot(hist_stack, data_hist, signal_hists, ranch_name, args)
         helper.savePlot(canvas, plot_path, html_path, branch_name, True, args)
         makeSimpleHtml.writeHTML(html_path, args.selection)
 if __name__ == "__main__":

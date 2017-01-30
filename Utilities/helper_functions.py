@@ -149,7 +149,7 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1):
                     WeightInfo.WeightInfo(1, 1,), "")  
         hist_factory[name].update({"histProducer" : histProducer})
     return hist_factory
-def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
+def getConfigHist(config_factory, plot_group, selection, branch_name, channels, blinding,
     addOverflow, cut_string="", luminosity=1, no_scalefacs=False, uncertainties="none"):
     if "Gen" not in selection:
         states = [x.strip() for x in channels.split(",")]
@@ -181,16 +181,24 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
             scale_hists.append(
                 ROOT.TH1D(hist_name+"_scale%i" % i, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax']))
     log_info = ""
+    if "data" in plot_group: 
+        for blind in blinding: 
+            if branch_name in blind:
+                cut_string = appendCut(cut_string, blind)
+    original_cut_string = cut_string
     for name, entry in hist_info.iteritems():
         producer = entry["histProducer"]
         if "weight" in entry.keys():
             producer.addWeight(entry["weight"])
         log_info += "\n" + "-"*70 +"\nName is %s entry is %s" % (name, entry)
+        print "NOW IT's ", blinding
         for tree in trees:
             state = tree.split("/")[0] if "ntuple" in tree else ""
             log_info += "\nFor state %s" % state
             config_factory.setProofAliases(state)
-            cut_string = config_factory.hackInAliases(cut_string)
+            # Don't enter an infinite loop of adding aliases
+            if cut_string == original_cut_string:
+                cut_string = config_factory.hackInAliases(cut_string)
             if "WZxsec2016" in selection and not "data" in name and not no_scalefacs:
                 scale_expr = getScaleFactorExpression(state, "medium", "tightW")
                 weighted_cut_string = appendCut(cut_string, scale_expr)
@@ -242,7 +250,7 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels,
     logging.debug("Hist has %i entries" % hist.GetEntries())
     return hist
 def appendCut(cut_string, add_cut):
-    if cut_string != "":
+    if cut_string != "" and add_cut not in cut_string:
         append_cut = lambda x: "*(%s)" % x if x not in ["", None] else x
         return "(" + cut_string + ")" + append_cut(add_cut)
     else:
