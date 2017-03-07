@@ -3,49 +3,75 @@ from collections import OrderedDict
 
 def getWZCutFlow(dataset_manager, cutflow_type):
     wz_full_cutflow = OrderedDict()
-    #wz_full_cutflow.update({"#geq 3 tight e/#mu" : {
-    #        "datatier" : "loosepreselection",
-    #        "additional_cut" : ""
-    #    }
-    #})
-    #wz_full_cutflow.update({"4th lepton veto" : {
-    #        "datatier" : "loosepreselection",
-    #        "additional_cut" : "lepVeto"
-    #    }
-    #})
-    wz_full_cutflow.update({"Require OSSF pair" : {
-            "datatier" : "preselection",
+    wz_full_cutflow.update({"3 Loose, w/ OSSF pair" : {
+            "datatier" : "3LooseLeptons",
             "additional_cut" : ""
         }
     })
-    #wz_full_cutflow.update({"M_{3l} > 100 GeV" : {
-    #        "datatier" : "Mass3l",
-    #        "additional_cut" : ""
-    #    }
-    #})
-    #wz_full_cutflow.update({"M_{l^{+}l^{-}} #in [60, 120] GeV" : {
-    #        "datatier" : "Mass3l",
-    #        "additional_cut" : "ZMass > 60 && ZMass < 120"
-    #    }
-    #})
-    wz_full_cutflow.update({"p_{T}(l_{1}) > 20 GeV" : {
-            "datatier" : "Zselection",
-            "additional_cut" : ""
+    wz_full_cutflow.update({"4th lepton veto" : {
+            "datatier" : "3LooseLeptons",
+            "additional_cut" : "nWZLooseMuon + nCBVIDVetoElec < 3.5"
         }
     })
-    wz_full_cutflow.update({"#Delta R(l,l') > 0.1" : {
-            "datatier" : "Zselection",
-            "additional_cut" : "dR_Wlep_Zlep1 > 0.1 && dR_Wlep_Zlep2 > 0.1"
+    wz_full_cutflow.update({"Tight Z Leptons" : {
+            "datatier" : "3LooseLeptons",
+            "additional_cut" : "nWZLooseMuon + nCBVIDVetoElec < 3.5"
+                               "&& Zlep1IsTight && Zlep2IsTight"
+        }
+    })
+    wz_full_cutflow.update({"M_{l^{+}l^{-}} #in [76, 106] GeV" : {
+            "datatier" : "3LooseLeptons",
+            "additional_cut" : "nWZLooseMuon + nCBVIDVetoElec < 3.5"
+                                "&& Zlep1IsTight && Zlep2IsTight"
+                                "&& ZMass > 76.1876 && ZMass < 106.1876"
+        }
+    })
+    wz_full_cutflow.update({"M_{3l} > 100 GeV" : {
+            "datatier" : "3LooseLeptons",
+            "additional_cut" : "nWZLooseMuon + nCBVIDVetoElec < 3.5"
+                                "&& Zlep1IsTight && Zlep2IsTight"
+                                "&& ZMass > 76.1876 && ZMass < 106.1876"
+                                "&& Mass > 100"
+        }
+    })
+    wz_full_cutflow.update({"p_{T}(l_{1,2}) > 25, 15 GeV" : {
+            "datatier" : "3LooseLeptons",
+            "additional_cut" : "nWZLooseMuon + nCBVIDVetoElec < 3.5"
+                                "&& Zlep1IsTight && Zlep2IsTight"
+                                "&& ZMass > 76.1876 && ZMass < 106.1876"
+                                "&& Mass > 100"
+                                "&& l1Pt > 25 && l2Pt > 15"
         }
     })
     wz_full_cutflow.update({"#slash{E}_{T} > 30 GeV" : {
-            "datatier" : "Zselection",
-            "additional_cut" : "dR_Wlep_Zlep1 > 0.1 && dR_Wlep_Zlep2 > 0.1 && MET > 30"
+            "datatier" : "3LooseLeptons",
+            "additional_cut" : "nWZLooseMuon + nCBVIDVetoElec < 3.5"
+                                "&& Zlep1IsTight && Zlep2IsTight"
+                                "&& ZMass > 76.1876 && ZMass < 106.1876"
+                                "&& Mass > 100"
+                                "&& l1Pt > 25 && l2Pt > 15" 
+                                "&& MET > 30"
         }
     })
-    wz_full_cutflow.update({"p_{T}(l_{3}) > 20 GeV" : {
-            "datatier" : "FinalSelection",
+    wz_full_cutflow.update({"b-jet veto" : {
+            "datatier" : "3LooseLeptons",
+            "additional_cut" : "nWZLooseMuon + nCBVIDVetoElec < 3.5"
+                                "&& Zlep1IsTight && Zlep2IsTight"
+                                "&& ZMass > 76.1876 && ZMass < 106.1876"
+                                "&& Mass > 100"
+                                "&& l1Pt > 25 && l2Pt > 15" 
+                                "&& MET > 30"
+                                "&& nJetCSVv2T < 0.5"
+        }
+    })
+    wz_full_cutflow.update({"W selection" : {
+            "datatier" : "WselectionLooseLeps",
             "additional_cut" : ""
+        }
+    })
+    wz_full_cutflow.update({"NOT W lepton tight" : {
+            "datatier" : "WselectionLooseLeps",
+            "additional_cut" : "Zlep1IsTight && Zlep2IsTight && !WlepIsTight"
         }
     })
     wz_basic_cutflow = OrderedDict()
@@ -70,7 +96,7 @@ def getWZCutFlow(dataset_manager, cutflow_type):
         }
     })
     wz_basic_cutflow.update({"W selection" : {
-            "datatier" : "FinalSelection",
+            "datatier" : "Wselection",
             "additional_cut" : ""
         }
     })
@@ -87,7 +113,7 @@ def getWZCutFlow(dataset_manager, cutflow_type):
         cutflow_entry = CutFlowTools.CutFlowEntry(name, 
             info["datatier"],
             dataset_manager,
-            "WZxsec2016/CutFlow"
+            "WZxsec2016"
         )
         cutflow_entry.addAdditionalCut(info["additional_cut"])
         cutflow_maker.addEntry(cutflow_entry)

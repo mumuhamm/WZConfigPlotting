@@ -2,17 +2,18 @@ import ROOT
 from Utilities.ConfigHistFactory import ConfigHistFactory 
 import Utilities.helper_functions as helper
 from collections import OrderedDict
+import array
 
 class CutFlowEntry(object):
     def __init__(self, name, data_tier, dataset_manager, analysis):
         self.name = name
         self.data_tier = data_tier
+        self.analysis = analysis 
         self.config_factory = ConfigHistFactory(
             dataset_manager,
-            analysis, 
-            data_tier
+            "/".join([analysis, data_tier]),
         )
-        self.states = []
+        self.states = "eee,eem,emm,mmm"
         self.luminosity = 1.
         self.additional_cut = ""
     def addAdditionalCut(self, cut_string):
@@ -23,22 +24,25 @@ class CutFlowEntry(object):
         self.states = states
     def getName(self):
         return self.name
-    def getValue(self, plot_group):
+    def getValue(self, plot_group, unc, scale_facs=False):
         hist = helper.getConfigHist(self.config_factory, 
                 plot_group, 
-                self.data_tier, 
+                "/".join([self.analysis, self.data_tier]), 
                 "l1Pt", 
                 self.states, 
-                self.luminosity, 
-                self.additional_cut
+                luminosity=self.luminosity, 
+                cut_string=self.additional_cut,
+                no_scalefacs=not scale_facs,
+                uncertainties=unc
         )
-        events = hist.Integral()
+        error = array.array('d', [0])
+        events = hist.IntegralAndError(0, hist.GetNbinsX(), error)
         hist.Delete()
-        return events
+        return (events, error[0])
 class ManualCutFlowEntry(object):
     def setEntryValues(self, entry_name, entry_value):
         self.entries[entry_name] = entry_value
-    def getValue(self, entry_name):
+    def getValue(self, entry_name, unc):
         if entry_name not in self.entries.keys():
             return 0
         else:
@@ -67,11 +71,13 @@ class CutFlowHistMaker(object):
         self.entries.append(entry)
     def setLogFile(log_file):
         self.log_file = log_file
-    def getHist(self, plot_group):
+    def getHist(self, plot_group, unc, scale_facs=False):
         nbins = len(self.entries)
-        hist = ROOT.TH1F(plot_group, plot_group, nbins, 0, nbins)
+        hist = ROOT.TH1D(plot_group, plot_group, nbins, 0, nbins)
         for i, entry in enumerate(self.entries):
-            hist.SetBinContent(i+1, entry.getValue(plot_group))
+            value, error = entry.getValue(plot_group, unc, scale_facs)
+            hist.SetBinContent(i+1, value)
+            hist.SetBinError(i+1, error)
             hist.GetXaxis().SetBinLabel(i+1, entry.getName())
         self.config_factory.setHistAttributes(hist, "CutFlow", plot_group)
         return hist
