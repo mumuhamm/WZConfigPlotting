@@ -12,10 +12,26 @@ import shutil
 import errno
 import math
 
-def makePlot(hist_stack, data_hist, branch_name, args):
-    canvas = ROOT.TCanvas("%s_canvas" % branch_name, branch_name, 1600, 1200) 
+def makePlot(hist_stack, data_hist, branch_name, args, signal_stack=0):
     hists = hist_stack.GetHists()
-    hist_stack.Draw("nostack hist" if args.nostack else "hist")
+    if signal_stack != 0:
+        sum_stack = hists[0].Clone()
+        for hist in hists[1:]:
+            sum_stack.Add(hist)
+        for i,hist in enumerate(signal_stack.GetHists()):
+            hist.Add(sum_stack)
+        signal_stack.Draw("hist nostack")
+        if not args.no_ratio:
+            signal_stack.GetXaxis().SetLabelOffset(999)
+            signal_stack.GetXaxis().SetTitle("")
+        signal_stack.Draw("hist nostack")
+    #stack_drawexpr = " ".join(["hist"] + 
+    #    ["nostack" if args.nostack else ""] +
+    #    ["same" if signal_stack != 0 else ""]
+    #)
+    stack_drawexpr = "hist"
+    canvas = ROOT.TCanvas("%s_canvas" % branch_name, branch_name, 1600, 1200) 
+    hist_stack.Draw(stack_drawexpr)
     if data_hist:
         data_hist.Draw("e1 same")
     if not args.no_decorations:
@@ -32,10 +48,10 @@ def makePlot(hist_stack, data_hist, branch_name, args):
         hists[0].GetXaxis().GetTitle())
     hist_stack.GetHistogram().SetLabelSize(0.04)
     hist_stack.SetMinimum(hists[0].GetMinimum()*args.scaleymin)
-    # Adding an arbirary factor of 100 here so the scaling doesn't cut off info from
-    # Hists. Not applied when lumi < 1This should be fixed
-    lumi = args.luminosity/100 if args.luminosity > 0 else 1
-    hist_stack.SetMaximum(hists[0].GetMaximum()*args.scaleymax*lumi)
+    ## Adding an arbirary factor of 100 here so the scaling doesn't cut off info from
+    ## Hists. Not applied when lumi < 1. This should be fixed
+    scale = args.luminosity/100 if args.luminosity > 0 else 1
+    hist_stack.SetMaximum(hists[0].GetMaximum()*args.scaleymax*scale)
     if "none" not in args.uncertainties:
         histErrors = getHistErrors(hist_stack, args.nostack)
         for error_hist in histErrors:
@@ -50,7 +66,10 @@ def makePlot(hist_stack, data_hist, branch_name, args):
         histErrors = []
     offset = ROOT.gPad.GetLeftMargin() - 0.04 if args.legend_left else \
         ROOT.gPad.GetRightMargin() - 0.04 
-    width = .2 if "WZxsec" in args.selection else 0.33
+    if hasattr(args, "selection"):
+        width = .2 if "WZxsec" in args.selection else 0.33
+    else: 
+        width = .2
     xcoords = [.10+offset, .1+width+offset] if args.legend_left \
         else [.92-width-offset, .92-offset]
     unique_entries = len(set([x.GetFillColor() for x in hists]))
@@ -75,7 +94,7 @@ def makePlot(hist_stack, data_hist, branch_name, args):
             text_box.AddText(line)
         text_box.Draw()
         ROOT.SetOwnership(text_box, False)
-    legend = getPrettyLegend(hist_stack, data_hist, histErrors, coords)
+    legend = getPrettyLegend(hist_stack, data_hist, signal_stack, histErrors, coords)
     legend.Draw()
     if not args.no_ratio:
         canvas = plotter.splitCanvas(canvas, hist_stack.GetName(), 
@@ -87,10 +106,6 @@ def makePlot(hist_stack, data_hist, branch_name, args):
 def getHistErrors(hist_stack, separate):
     histErrors = []
     for hist in hist_stack.GetHists():
-        # Only a temporary solution. Really these need to be 
-        # separate hists and not part of the stack
-        if "wzjj" in hist.GetName() or "wlljj" in hist.GetName():
-            continue
         error_hist = plotter.getHistErrors(hist)
         if separate:
             error_hist.SetFillColor(hist.GetLineColor())
@@ -102,8 +117,10 @@ def getHistErrors(hist_stack, separate):
             else:
                 histErrors[0].Add(error_hist)
     return histErrors
-def getPrettyLegend(hist_stack, data_hist, error_hists, coords):
+def getPrettyLegend(hist_stack, data_hist, signal_stack, error_hists, coords):
     hists = hist_stack.GetHists()
+    if signal_stack != 0:
+        stacks += signal_stack.GetHists()
     legend = ROOT.TLegend(coords[0], coords[1], coords[2], coords[3])
     legend.SetFillColor(0)
     if data_hist:
@@ -149,8 +166,8 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1):
                     WeightInfo.WeightInfo(1, 1,), "")  
         hist_factory[name].update({"histProducer" : histProducer})
     return hist_factory
-def getConfigHist(config_factory, plot_group, selection, branch_name, channels, blinding,
-    addOverflow, cut_string="", luminosity=1, no_scalefacs=False, uncertainties="none"):
+def getConfigHist(config_factory, plot_group, selection, branch_name, channels, blinding=[],
+    addOverflow=True, cut_string="", luminosity=1, no_scalefacs=False, uncertainties="none"):
     if "Gen" not in selection:
         states = [x.strip() for x in channels.split(",")]
         trees = ["%s/ntuple" % state for state in states]
@@ -188,10 +205,10 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels, 
     original_cut_string = cut_string
     for name, entry in hist_info.iteritems():
         producer = entry["histProducer"]
-        if "weight" in entry.keys():
-            producer.addWeight(entry["weight"])
+        weight = config_factory.getPlotGroupWeight(plot_group)
+        if weight != 1:
+            producer.addWeight(weight)
         log_info += "\n" + "-"*70 +"\nName is %s entry is %s" % (name, entry)
-        print "NOW IT's ", blinding
         for tree in trees:
             state = tree.split("/")[0] if "ntuple" in tree else ""
             log_info += "\nFor state %s" % state
@@ -363,7 +380,7 @@ def getScaleFactorExpressionAllTight(state):
                 "m3TightIsoSF*" \
                 "m3TightIDSF*" \
                 "pileupSF"
-def getPlotPaths(selection, folder_name, write_log_file):
+def getPlotPaths(selection, folder_name, write_log_file=False):
     if "hep.wisc.edu" in os.environ['HOSTNAME']:
         storage_area = "/nfs_scratch/kdlong"
         html_area = "/afs/hep.wisc.edu/home/kdlong/public_html"

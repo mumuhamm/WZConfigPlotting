@@ -24,6 +24,28 @@ def getDefaultParser():
                         "Note: Leave unspecified for auto naming")
     parser.add_argument("--legend_left", action="store_true",
                         help="Put legend left or right")
+    parser.add_argument("--folder_name", type=str, default="",
+                        help="Folder name to save plots in (default is current time)")
+    parser.add_argument("--ratio_text", default="",type=str, 
+                        help="Ratio text")
+    parser.add_argument("--scaleymax", type=float, default=1.0,
+                        help="Scale default ymax by this amount")
+    parser.add_argument("--scaleymin", type=float, default=1.0,
+                        help="Scale default ymin by this amount")
+    parser.add_argument("--scalelegy", type=float, default=1.0,
+                        help="Scale default legend entry size by this amount")
+    parser.add_argument("--ratio_range", nargs=2, default=[0.5,1.5],
+                        help="Ratio min ratio max (default 0.5 1.5)")
+    parser.add_argument("--scalexmax", type=float, default=1.0,
+                        help="Scale default xmax by this amount")
+    parser.add_argument("-t", "--extra_text", type=str, default="",
+                        help="Extra text to be added below (above) the legend")
+    parser.add_argument("--extra_text_above", action='store_true',
+                        help="Position extra text above the legend")
+    parser.add_argument("--simulation", action='store_true',
+                        help="Write 'Simulation' in CMS style text")
+    parser.add_argument("--no_overflow", action='store_true',
+                        help="No overflow bin")
     parser.add_argument("-u", "--uncertainties", type=str, default="all",
                         choices=["all", "stat", "scale", "none"],
                         help="Include error bands for specfied uncertainties")
@@ -44,7 +66,43 @@ def getDefaultParser():
                         help="Use logaritmic scale on Y-axis")
     parser.add_argument("-c", "--channels", type=str, default="eee,mmm,eem,emm",
                         help="List (separate by commas) of channels to plot") 
+    parser.add_argument("--no_scalefactors", action='store_true',
+                        help="No scale factors")
     parser.add_argument("-f", "--files_to_plot", type=str, required=False,
-                        default="WZVBS", help="Files to make plots from, "
+                        default="WZxsec2016", help="Files to make plots from, "
+                        "separated by a comma (match name in file_info.json)")
+    parser.add_argument("--signal_files", type=str, required=False,
+                        default="", help="Files to make plots "
+                        "signal plots from i.e. on top, not stacked. List "
                         "separated by a comma (match name in file_info.json)")
     return parser 
+
+def getListOfFiles(file_set, selection):
+    if "WZxsec2016" in file_set:
+        filelist = ["vvv", "top"]
+        #filelist = ["vvv", "top_notzq", "tzq"]
+        filelist.append("vv" if "pow" not in file_set else "vv-powheg")
+        if "preselection" not in selection and "3LooseLeptons" not in selection:
+            filelist.append("zg")
+        drellyan = "dyjets"
+        if "dynlo" in file_set:
+            drellyan = "dyjets_nlo"
+        elif "dylo" in file_set:
+            drellyan = "dy-lo"
+        if "Loose" in selection:
+            filelist.insert(0, drellyan)
+        else:
+            filelist.append(drellyan)
+        filelist.append("wz-powheg" if "pow" in file_set else "wz")
+        if "atgc" in file_set: 
+            filelist.append("wz-atgc")
+        #if "vbs" in file_set: 
+        #    #filelist.append("wzjj-aqgcfm__sm")
+        #    if "nlo" in file_set:
+        #        filelist.append("wzjj-vbfnlo")
+        #    else:
+        #        filelist.append("wlljj-ewk")
+        #elif "aqgc" in file_set:
+        #    filelist.append("wzjj-aqgcfm__fm0-4")
+        return filelist
+    return [x.strip() for x in file_set.split(",")]

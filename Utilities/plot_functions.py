@@ -56,7 +56,7 @@ def loadHist(hist, tree, branch_name, cut_string, max_entries, append=False):
     return num
 # Modified from Nick Smith, U-Wisconsin
 # https://github.com/nsmith-/ZHinvAnalysis/blob/master/splitCanvas.py
-def splitCanvas(oldcanvas, stack_name, data_name, ratio_text, ratio_range) :
+def splitCanvas(oldcanvas, stack_name, data_name, ratio_text, ratio_range):
     name = oldcanvas.GetName()
 
     canvas = ROOT.TCanvas(name+'__new', name)
@@ -90,11 +90,6 @@ def splitCanvas(oldcanvas, stack_name, data_name, ratio_text, ratio_range) :
     else:
         compare_data = True
         for hist in hists[1:]:
-            # Hacky hacky hack hack
-            # (Don't include WZjj signal in ratio)
-            if "wzjj" in hist.GetName() or "wlljj" in hist.GetName() or \
-                    "atgc" in hist.GetName() or "aqgc" in hist.GetName():
-                continue
             hist1.Add(hist)
         if not hist2:
             logging.warning("No data hist found. Cannot form ratio")

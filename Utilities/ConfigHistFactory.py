@@ -91,6 +91,11 @@ class ConfigHistFactory(object):
                 add_error = math.sqrt(scale_fac*plot_group["add_perc_error"])
                 error = math.sqrt(hist.GetBinError(i)**2 + add_error**2)
                 hist.SetBinError(i, error)
+    def getPlotGroupWeight(self, plot_group):
+        if plot_group in self.plot_groups.keys():
+            if "weight" in self.plot_groups[plot_group].keys():
+                return self.plot_groups[plot_group]["weight"]
+        return 1
     def getPlotGroupMembers(self, plot_group):
         logging.debug("Plot Groups are %s" % self.plot_groups.keys())
         if plot_group in self.plot_groups.keys():
