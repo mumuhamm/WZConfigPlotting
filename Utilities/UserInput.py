@@ -22,6 +22,8 @@ def getDefaultParser():
     parser.add_argument("-o", "--output_file", type=str, default="",
                         help="Name of file to be created (type pdf/png etc.) " \
                         "Note: Leave unspecified for auto naming")
+    parser.add_argument("--hist_file", type=str, default="",
+                        help="Read histograms from file")
     parser.add_argument("--legend_left", action="store_true",
                         help="Put legend left or right")
     parser.add_argument("--folder_name", type=str, default="",
@@ -34,7 +36,7 @@ def getDefaultParser():
                         help="Scale default ymin by this amount")
     parser.add_argument("--scalelegy", type=float, default=1.0,
                         help="Scale default legend entry size by this amount")
-    parser.add_argument("--ratio_range", nargs=2, default=[0.5,1.5],
+    parser.add_argument("--ratio_range", nargs=2, default=[0.4,1.6],
                         help="Ratio min ratio max (default 0.5 1.5)")
     parser.add_argument("--scalexmax", type=float, default=1.0,
                         help="Scale default xmax by this amount")
@@ -76,33 +78,40 @@ def getDefaultParser():
                         "signal plots from i.e. on top, not stacked. List "
                         "separated by a comma (match name in file_info.json)")
     return parser 
-
 def getListOfFiles(file_set, selection):
     if "WZxsec2016" in file_set:
-        filelist = ["vvv", "top"]
-        #filelist = ["vvv", "top_notzq", "tzq"]
-        filelist.append("vv" if "pow" not in file_set else "vv-powheg")
-        if "preselection" not in selection and "3LooseLeptons" not in selection:
-            filelist.append("zg")
-        drellyan = "dyjets"
-        if "dynlo" in file_set:
-            drellyan = "dyjets_nlo"
-        elif "dylo" in file_set:
-            drellyan = "dy-lo"
-        if "Loose" in selection:
-            filelist.insert(0, drellyan)
+        filelist = []
+        if "nonprompt" in file_set:
+            filelist.append("nonprompt")
+            filelist.append("top-ewk")
         else:
-            filelist.append(drellyan)
-        filelist.append("wz-powheg" if "pow" in file_set else "wz")
+            if "dyjets" in file_set:
+                drellyan = "dyjets"
+            elif "dylo" in file_set:
+                drellyan = "dy-lo"
+            else:
+                drellyan = "dyjets_nlo"
+            filelist = [drellyan]
+            filelist.append("top")
+        if "preselection" not in selection:# and "3LooseLeptons" not in selection:
+            filelist.append("zg")
+        filelist.append("vv" if "pow" not in file_set else "vv-powheg")
+        filelist.append("vvv")
+        if "pow" in file_set:
+            filelist.append("wz-powheg")
+        elif "mlm" in file_set:
+            filelist.append("wz-mgmlm")
+        else:
+            filelist.append("wz")
         if "atgc" in file_set: 
             filelist.append("wz-atgc")
-        #if "vbs" in file_set: 
-        #    #filelist.append("wzjj-aqgcfm__sm")
-        #    if "nlo" in file_set:
-        #        filelist.append("wzjj-vbfnlo")
-        #    else:
-        #        filelist.append("wlljj-ewk")
-        #elif "aqgc" in file_set:
-        #    filelist.append("wzjj-aqgcfm__fm0-4")
+        if "vbs" in file_set: 
+            #filelist.append("wzjj-aqgcfm__sm")
+            if "nlo" in file_set:
+                filelist.append("wzjj-vbfnlo")
+            else:
+                filelist.append("wlljj-ewk")
+        elif "aqgc" in file_set:
+            filelist.append("wzjj-aqgcfm__fm0-4")
         return filelist
     return [x.strip() for x in file_set.split(",")]

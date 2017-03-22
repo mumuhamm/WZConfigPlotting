@@ -17,4 +17,3 @@ class WeightInfoProducer(object):
         self.sum_of_weights = hist.Integral()
     def produce(self):
         return WeightInfo(self.cross_section, self.sum_of_weights)
-

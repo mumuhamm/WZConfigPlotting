@@ -13,6 +13,7 @@ import sys
 import array
 import datetime
 from Utilities.scripts import makeSimpleHtml
+from IPython import embed
 
 def getComLineArgs():
     parser = UserInput.getDefaultParser()
@@ -73,13 +74,18 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
         mc_file.write("\nRatio S/sqrt(S+B): %0.2f +/- %0.2f" % (round(likelihood, 2), 
             round(likelihood_err, 2)))
 def getStacked(name, config_factory, selection, filelist, branch_name, channels, blinding, addOverflow,
-               cut_string="", luminosity=1, no_scalefacs=False, uncertainties="none"):
+               cut_string="", luminosity=1, no_scalefacs=False, uncertainties="none", hist_file=""):
     hist_stack = ROOT.THStack(name, "")
+    ROOT.SetOwnership(hist_stack, False)
     hist_info = {}
     for plot_set in filelist:
-        hist = helper.getConfigHist(config_factory, plot_set, selection,  
-                branch_name, channels, blinding, addOverflow, cut_string, luminosity,
-                no_scalefacs, uncertainties)
+        if hist_file == "":
+            hist = helper.getConfigHist(config_factory, plot_set, selection,  
+                    branch_name, channels, blinding, addOverflow, cut_string, luminosity,
+                    no_scalefacs, uncertainties)
+        else:
+            hist = helper.getConfigHistFromFile(hist_file, config_factory, plot_set, 
+                        selection, branch_name, channels, luminosity)
         raw_events = hist.GetEntries() - 1
         hist_stack.Add(hist)
         error = array.array('d', [0])
@@ -92,44 +98,13 @@ def getStacked(name, config_factory, selection, filelist, branch_name, channels,
                                     weighted_events/math.sqrt(raw_events) 
         }
     writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string)
-
-
     return hist_stack
-def getListOfFiles(file_set, selection):
-    if "WZxsec2016" in file_set:
-        filelist = ["vvv", "top"]
-        #filelist = ["vvv", "top_notzq", "tzq"]
-        filelist.append("vv" if "pow" not in file_set else "vv-powheg")
-        if "preselection" not in selection and "3LooseLeptons" not in selection:
-            filelist.append("zg")
-        drellyan = "dyjets"
-        if "dynlo" in file_set:
-            drellyan = "dyjets_nlo"
-        elif "dylo" in file_set:
-            drellyan = "dy-lo"
-        if "Loose" in selection:
-            filelist.insert(0, drellyan)
-        else:
-            filelist.append(drellyan)
-        filelist.append("wz-powheg" if "pow" in file_set else "wz")
-        if "atgc" in file_set: 
-            filelist.append("wz-atgc")
-        #if "vbs" in file_set: 
-        #    #filelist.append("wzjj-aqgcfm__sm")
-        #    if "nlo" in file_set:
-        #        filelist.append("wzjj-vbfnlo")
-        #    else:
-        #        filelist.append("wlljj-ewk")
-        #elif "aqgc" in file_set:
-        #    filelist.append("wzjj-aqgcfm__fm0-4")
-        return filelist
-    return [x.strip() for x in file_set.split(",")]
-
 def main():
     args = getComLineArgs()
     ROOT.gROOT.SetBatch(True)
-    ROOT.TProof.Open('workers=12')
-    filelist = getListOfFiles(args.files_to_plot, args.selection)
+    if args.hist_file == "":
+        ROOT.TProof.Open('workers=12')
+    filelist = UserInput.getListOfFiles(args.files_to_plot, args.selection)
     path = "/cms/kdlong" if "hep.wisc.edu" in os.environ['HOSTNAME'] else \
         "/afs/cern.ch/user/k/kelong/work"
     config_factory = ConfigHistFactory(
@@ -154,22 +129,28 @@ def main():
             mc_file.write("\nPlotting branch: %s\n" % branch_name)
         hist_stack = getStacked("stack", config_factory, args.selection, filelist, 
                 branch_name, args.channels, args.blinding, not args.no_overflow, cut_string,
-                args.luminosity, args.no_scalefactors, args.uncertainties)
+                args.luminosity, args.no_scalefactors, args.uncertainties, args.hist_file)
         if not args.no_data:
-            data_hist = helper.getConfigHist(config_factory, "data_2016", args.selection, 
-                    branch_name, args.channels, args.blinding, not args.no_overflow, cut_string)
+            if args.hist_file == "":
+                data_hist = helper.getConfigHist(config_factory, "data_2016", args.selection, 
+                        branch_name, args.channels, args.blinding, not args.no_overflow, cut_string)
+            else:
+                data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_2016", 
+                        args.selection, branch_name, args.channels)
             with open("temp.txt", "a") as events_log_file:
                 events_log_file.write("\nNumber of events in data: %i\n" % data_hist.Integral())
         else:
             data_hist = 0
         signal_stack = 0
         if len(args.signal_files) > 0:
-            signal_filelist = getListOfFiles(args.signal_files, args.selection)
+            signal_filelist = UserInput.getListOfFiles(args.signal_files, args.selection)
             signal_stack = getStacked("signal_stack", config_factory, args.selection, signal_filelist, 
                     branch_name, args.channels, args.blinding, not args.no_overflow, cut_string,
-                    args.luminosity, args.no_scalefactors, args.uncertainties)
+                    args.luminosity, args.no_scalefactors, args.uncertainties, args.hist_file)
         canvas = helper.makePlot(hist_stack, data_hist, branch_name, args, signal_stack)
         helper.savePlot(canvas, plot_path, html_path, branch_name, True, args)
+        print "Done saving plot"
         makeSimpleHtml.writeHTML(html_path, args.selection)
+        print "Done with main program"
 if __name__ == "__main__":
     main()

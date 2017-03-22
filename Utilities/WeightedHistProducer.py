@@ -9,10 +9,10 @@ class WeightedHistProducer(object):
         self.weight_branch = weight_branch
         self.event_weight = self.weight_info.getCrossSection()/self.weight_info.getSumOfWeights() \
             if self.weight_info.getSumOfWeights() > 0 else 0
-        print "EVENT WEIGHT IS %0.2e" % self.event_weight
-        print "Cross section is %0.2e" % self.weight_info.getCrossSection()
-        print "Sum of weights is %i" % self.weight_info.getSumOfWeights()
         self.lumi = 1/self.event_weight if self.event_weight > 0 else 1
+    def getHistScaleFactor(self):
+        return self.weight_info.getCrossSection()*self.lumi/self.weight_info.getSumOfWeights() \
+                        if self.weight_info.getSumOfWeights() > 0 else 0
     def setWeightBranch(self, weight_branch):
         self.weight_branch = weight_branch
     def setCutString(self, cut_string):
@@ -39,10 +39,9 @@ class WeightedHistProducer(object):
         weight_string = "*".join([str(self.event_weight), str(self.lumi)] +
             ([self.weight_branch] if self.weight_branch != "" else []))
         draw_cut = weight_string + append_cut(cut_string)
-        print "Draw cut is %s" % draw_cut
-        print "Draw expr is %s" % draw_expr
-        print "Proof path is %s" % proof_path
         logging.debug("Draw cut is %s" % draw_cut)
+        logging.debug("Draw expression is %s" % draw_expr)
+        logging.debug("Proof path is %s" % proof_path)
         proof.DrawSelect(proof_path, draw_expr, draw_cut, "goff")
         hist_name = draw_expr.split(">>")[1].split("(")[0]
         hist = proof.GetOutputList().FindObject(hist_name)
