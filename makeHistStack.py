@@ -149,8 +149,6 @@ def main():
                     args.luminosity, args.no_scalefactors, args.uncertainties, args.hist_file)
         canvas = helper.makePlot(hist_stack, data_hist, branch_name, args, signal_stack)
         helper.savePlot(canvas, plot_path, html_path, branch_name, True, args)
-        print "Done saving plot"
         makeSimpleHtml.writeHTML(html_path, args.selection)
-        print "Done with main program"
 if __name__ == "__main__":
     main()

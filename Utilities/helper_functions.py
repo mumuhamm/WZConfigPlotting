@@ -96,8 +96,10 @@ def makePlot(hist_stack, data_hist, branch_name, args, signal_stack=0):
     if not args.no_ratio:
         canvas = plotter.splitCanvas(canvas,
                 "Data / SM" if data_hist else args.ratio_text,
-                args.ratio_range
+                [float(i) for i in args.ratio_range]
         )
+        #first_stack.GetXaxis().SetTitle("")
+        #first_stack.GetXaxis().SetLabelOffset(999)
     return canvas
 def getHistErrors(hist_stack, separate):
     histErrors = []
