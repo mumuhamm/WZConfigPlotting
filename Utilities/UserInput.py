@@ -73,6 +73,8 @@ def getDefaultParser():
     parser.add_argument("-f", "--files_to_plot", type=str, required=False,
                         default="WZxsec2016", help="Files to make plots from, "
                         "separated by a comma (match name in file_info.json)")
+    parser.add_argument("-a", "--append_to_name", type=str, default="",
+                        help="Name plot as <branch_name>_<append_to_name>")
     parser.add_argument("--signal_files", type=str, required=False,
                         default="", help="Files to make plots "
                         "signal plots from i.e. on top, not stacked. List "

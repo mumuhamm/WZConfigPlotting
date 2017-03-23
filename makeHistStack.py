@@ -147,8 +147,9 @@ def main():
             signal_stack = getStacked("signal_stack", config_factory, args.selection, signal_filelist, 
                     branch_name, args.channels, args.blinding, not args.no_overflow, cut_string,
                     args.luminosity, args.no_scalefactors, args.uncertainties, args.hist_file)
+        plot_name = branch_name if args.append_to_name == "" else "_".join([branch_name, args.append_to_name])
         canvas = helper.makePlot(hist_stack, data_hist, branch_name, args, signal_stack)
-        helper.savePlot(canvas, plot_path, html_path, branch_name, True, args)
+        helper.savePlot(canvas, plot_path, html_path, plot_name, True, args)
         makeSimpleHtml.writeHTML(html_path, args.selection)
 if __name__ == "__main__":
     main()

@@ -99,6 +99,10 @@ def splitCanvas(oldcanvas, ratio_text, ratio_range):
         centralRatioHist.SetBinContent(i, 1.)
     stack.GetXaxis().Copy(centralRatioHist.GetXaxis())
     stack.GetXaxis().Copy(centralRatioHist.GetXaxis())
+    signal_stack = ROOT.gROOT.FindObject("signal_stack")
+    if signal_stack:
+        signal_stack.GetXaxis().Copy(centralRatioHist.GetXaxis())
+        signal_stack.GetXaxis().Copy(centralRatioHist.GetXaxis())
     centralRatioHist.GetYaxis().SetTitle(ratio_text)
     centralRatioHist.GetYaxis().CenterTitle()
     centralRatioHist.GetYaxis().SetRangeUser(*ratio_range)
