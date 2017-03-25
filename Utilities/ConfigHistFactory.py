@@ -35,13 +35,29 @@ class ConfigHistFactory(object):
                 object_type, "%s_*.json" % base_name])):
             info.update(UserInput.readJson(file_name))
         return info
+    def getHist2DWeightDrawExpr(self, object_name, dataset_name, channel, bins):
+        draw_expr = self.getHistDrawExpr(object_name, dataset_name, channel)
+        draw_expr = draw_expr.replace("(", "(" + ",".join([str(i) for i in bins]+[""]))
+        draw_expr = draw_expr.replace(object_name, object_name + ":Iteration$", 1)
+        return draw_expr
     def getHistDrawExpr(self, object_name, dataset_name, channel):
         hist_name = '_'.join([x for x in [dataset_name, channel, object_name] 
             if x != ""])
-        object_name = object_name if object_name in self.plot_objects else object_name.split("_")[0]
-        hist_info = self.plot_objects[object_name]['Initialize']
+        object_entry = object_name if object_name in self.plot_objects else object_name.split("_")[0]
+        hist_info = self.plot_objects[object_entry]['Initialize']
         draw_expr = '>>'.join([object_name, hist_name])
         draw_expr += "(%i,%f,%f)" % (hist_info['nbins'], hist_info['xmin'], hist_info['xmax'])
+        return draw_expr
+    def get2DHistDrawExpr(self, xobject_name, yobject_name, dataset_name, channel):
+        hist_name = '_'.join([x for x in [dataset_name, channel, xobject_name, yobject_name] 
+            if x != ""])
+        xobject_name = xobject_name if xobject_name in self.plot_objects else xobject_name.split("_")[0]
+        yobject_name = yobject_name if yobject_name in self.plot_objects else yobject_name.split("_")[0]
+        xhist_info = self.plot_objects[xobject_name]['Initialize']
+        yhist_info = self.plot_objects[yobject_name]['Initialize']
+        draw_expr = '>>'.join([xobject_name+":"+yobject_name, hist_name])
+        draw_expr += "(%s)" % ",".join([str(x) for x in [xhist_info['nbins'], xhist_info['xmin'], xhist_info['xmax'],
+            yhist_info['nbins'], yhist_info['xmin'], yhist_info['xmax']]])
         return draw_expr
     def getHistBinInfo(self, object_name):
         bin_info = {}

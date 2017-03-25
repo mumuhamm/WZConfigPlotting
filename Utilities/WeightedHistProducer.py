@@ -1,7 +1,7 @@
 import ROOT
 import WeightInfo
 import logging
-
+logging.basicConfig(level=logging.DEBUG)
 class WeightedHistProducer(object):
     def __init__(self, weight_info, weight_branch):
         self.weight_info = weight_info 

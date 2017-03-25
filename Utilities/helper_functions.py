@@ -99,8 +99,6 @@ def makePlot(hist_stack, data_hist, branch_name, args, signal_stack=0):
                 "Data / SM" if data_hist else args.ratio_text,
                 [float(i) for i in args.ratio_range]
         )
-        #first_stack.GetXaxis().SetTitle("")
-        #first_stack.GetXaxis().SetLabelOffset(999)
     return canvas
 def getHistErrors(hist_stack, separate):
     histErrors = []
@@ -185,13 +183,6 @@ def getConfigHistFromFile(histfile, config_factory, plot_group, selection, branc
         hist.Delete()
     hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
    
-    scale_hists = []
-    log_info = ""
-    #TODO
-    # if "scale" in uncertainties or uncertainties == "all":
-    ##if "data" in plot_group: 
-    ##    for blind in blinding: 
-    ##        if branch_name in blind:
     hist_file = ROOT.TFile(histfile)
     for name, entry in hist_info.iteritems():
         for chan in channels.split(","):
@@ -242,8 +233,10 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels, 
     hist = ROOT.gProof.GetOutputList().FindObject(hist_name)
     if hist:
         hist.Delete()
-    hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
-   
+    #if uncertainties in ["none", "stat"]:
+    #    hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
+    #else:
+    hist = ROOT.TH2D(hist_name, hist_name, 8, 0, 8, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
     scale_hists = []
     if "scale" in uncertainties or uncertainties == "all":
         for i in range(len(getQCDScaleExpressions(selection))):
@@ -272,9 +265,13 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels, 
                 scale_expr = getScaleFactorExpression(state, "medium", "tightW")
                 weighted_cut_string = appendCut(cut_string, scale_expr)
             else:
-                weighted_cut_string = cut_string
+                weighted_cut_string = cut_string 
+            #draw_expr = config_factory.getHistDrawExpr(branch_name, name, state)
+            scalebins = [8,0,8]
+            draw_expr = config_factory.getHist2DWeightDrawExpr(branch_name, name, state, scalebins)
+            weighted_cut_string = appendCut(cut_string, "scaleWeights/scaleWeights[0]")
             producer.setCutString(weighted_cut_string)
-            draw_expr = config_factory.getHistDrawExpr(branch_name, name, state)
+            print draw_expr
             logging.debug("Draw expression was %s" % draw_expr)
             proof_name = "_".join([name, "%s#/%s" % (selection.replace("/", "_"), tree)])
             logging.debug("Proof path was %s" % proof_name)
@@ -298,6 +295,7 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels, 
         if len(scale_hists) == 0:
             scale_hists.append(hist)
         log_info += "total number of events: %f" % hist.Integral()
+        embed()
         config_factory.setHistAttributes(hist, branch_name, plot_group)
     for i in range(1, hist.GetNbinsX()+1):
         try:
