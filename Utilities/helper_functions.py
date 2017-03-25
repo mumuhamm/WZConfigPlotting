@@ -5,6 +5,7 @@ import Utilities.WeightedHistProducer as WeightedHistProducer
 from Utilities.ConfigHistFactory import ConfigHistFactory 
 from collections import OrderedDict
 import os
+import subprocess
 import glob
 import logging
 import datetime
@@ -471,18 +472,21 @@ def savePlot(canvas, plot_path, html_path, branch_name, write_log_file, args):
     if write_log_file:
         log_file = "/".join([plot_path, "logs", "%s_event_info.log" % branch_name])
         shutil.move("temp.txt", log_file) 
-    canvas.Print("/".join([plot_path, branch_name + ".root"]))
-    canvas.Print("/".join([plot_path, branch_name + ".C"]))
-    canvas.Print("/".join([plot_path, branch_name + ".pdf"]))
-    print "Writing html"
+    output_name ="/".join([plot_path, branch_name]) 
+    canvas.Print(output_name + ".root")
+    canvas.Print(output_name + ".C")
     if not args.no_html:
         makeDirectory(html_path)
-        canvas.Print("/".join([html_path, branch_name + ".pdf"]))
-        canvas.Print("/".join([html_path, branch_name + ".png"]))
+        output_name ="/".join([html_path, branch_name])
+        canvas.Print(output_name + ".png")
+        canvas.Print(output_name + ".eps")
+        subprocess.call(["epstopdf", "--outfile=%s" % output_name+".pdf", output_name+".eps"])
+        os.remove(output_name+".eps")
         if write_log_file:
             makeDirectory("/".join([html_path, "logs"]))
             shutil.copy(log_file, log_file.replace(plot_path, html_path))
     del canvas
+
 def makeDirectory(path):
     '''
     Make a directory, don't crash
