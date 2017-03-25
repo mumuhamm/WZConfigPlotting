@@ -93,12 +93,12 @@ def getListOfFiles(file_set, selection):
                 drellyan = "dy-lo"
             else:
                 drellyan = "dyjets_nlo"
+            filelist.append("vvv")
             filelist = [drellyan]
             filelist.append("top")
         if "preselection" not in selection:# and "3LooseLeptons" not in selection:
             filelist.append("zg")
         filelist.append("vv" if "pow" not in file_set else "vv-powheg")
-        filelist.append("vvv")
         if "pow" in file_set:
             filelist.append("wz-powheg")
         elif "mlm" in file_set:
