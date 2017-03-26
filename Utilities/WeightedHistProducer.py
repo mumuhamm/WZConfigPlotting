@@ -1,7 +1,6 @@
 import ROOT
 import WeightInfo
 import logging
-logging.basicConfig(level=logging.DEBUG)
 class WeightedHistProducer(object):
     def __init__(self, weight_info, weight_branch):
         self.weight_info = weight_info 
@@ -31,7 +30,7 @@ class WeightedHistProducer(object):
         elif units != 'fb-1':
             raise ValueError("Invalid luminosity units! Options are 'pb-1' and 'fb-1'")
         self.lumi = lumi if lumi > 0 else 1/self.getCrossSection()
-    def produce(self, draw_expr, proof_path="", cut_string="", overflow=True): 
+    def produce(self, draw_expr, proof_path="", cut_string="", overflow=False): 
         proof = ROOT.gProof
         if cut_string == "":
             cut_string = self.cut_string
@@ -42,7 +41,7 @@ class WeightedHistProducer(object):
         logging.debug("Draw cut is %s" % draw_cut)
         logging.debug("Draw expression is %s" % draw_expr)
         logging.debug("Proof path is %s" % proof_path)
-        proof.DrawSelect(proof_path, draw_expr, draw_cut, "goff")
+        proof.DrawSelect(proof_path, draw_expr, draw_cut, "goff", -1)
         hist_name = draw_expr.split(">>")[1].split("(")[0]
         hist = proof.GetOutputList().FindObject(hist_name)
         if not hist:

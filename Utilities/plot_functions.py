@@ -3,6 +3,7 @@ import glob
 import os
 import logging
 import re
+from IPython import embed
 
 def getHistFromFile(root_file, name_in_file, rename, path_to_hist):
     if not root_file:
@@ -12,7 +13,6 @@ def getHistFromFile(root_file, name_in_file, rename, path_to_hist):
     if path_to_hist != "":
         name_in_file = path_to_hist.join(["/", name_in_file]) 
     hist = root_file.Get(name_in_file)
-    print hist
     if not hist:
         print 'Failed to get hist %s from file' % name_in_file
         exit(0)
@@ -59,7 +59,7 @@ def loadHist(hist, tree, branch_name, cut_string, max_entries, append=False):
 def splitCanvas(oldcanvas, ratio_text, ratio_range):
     stack = filter(lambda p: type(p) is ROOT.THStack and "signal" not in p.GetName(), oldcanvas.GetListOfPrimitives())[0]
     signal_stacks = filter(lambda p: type(p) is ROOT.THStack and "signal" in p.GetName(), oldcanvas.GetListOfPrimitives())
-    data_list = filter(lambda p: p.InheritsFrom("TH1") and 'data' in p.GetName().lower(), oldcanvas.GetListOfPrimitives())
+    data_list = filter(lambda p: type(p) is ROOT.TH1D and 'data' in p.GetName().lower(), oldcanvas.GetListOfPrimitives())
     compareData = True
     if len(data_list) == 0:
         compareData = False

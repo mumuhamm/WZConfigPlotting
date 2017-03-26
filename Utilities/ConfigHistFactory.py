@@ -41,6 +41,7 @@ class ConfigHistFactory(object):
         draw_expr = draw_expr.replace(object_name, object_name + ":Iteration$", 1)
         return draw_expr
     def getHistDrawExpr(self, object_name, dataset_name, channel):
+
         hist_name = '_'.join([x for x in [dataset_name, channel, object_name] 
             if x != ""])
         object_entry = object_name if object_name in self.plot_objects else object_name.split("_")[0]
@@ -113,7 +114,6 @@ class ConfigHistFactory(object):
                 return self.plot_groups[plot_group]["weight"]
         return 1
     def getPlotGroupMembers(self, plot_group):
-        logging.debug("Plot Groups are %s" % self.plot_groups.keys())
         if plot_group in self.plot_groups.keys():
             return self.plot_groups[plot_group]["Members"]
         else:

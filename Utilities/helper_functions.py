@@ -14,6 +14,8 @@ import errno
 import math
 from IPython import embed
 
+#logging.basicConfig(level=logging.DEBUG)
+
 def makePlot(hist_stack, data_hist, branch_name, args, signal_stack=0):
     stack_drawexpr = " ".join(["hist"] + 
         ["nostack" if args.nostack else ""] +
@@ -198,7 +200,7 @@ def getConfigHistFromFile(histfile, config_factory, plot_group, selection, branc
             if not "data" in plot_group and plot_group != "nonprompt":
                 state_hist.Scale(producer.getHistScaleFactor())
             hist.Add(state_hist)
-        log_info += "total number of events: %f" % hist.Integral()
+        log_info += "total number of events: %f" % final_hist.Integral()
         config_factory.setHistAttributes(hist, branch_name, plot_group)
        # Just symmetric errors for now
     logging.debug(log_info)
@@ -230,23 +232,26 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels, 
     hist_info = getHistFactory(config_factory, selection, filelist, luminosity)
     bin_info = config_factory.getHistBinInfo(branch_name)
     hist_name = "_".join([plot_group, selection.replace("/", "_"), branch_name.split("_")[0]])
-    hist = ROOT.gProof.GetOutputList().FindObject(hist_name)
-    if hist:
-        hist.Delete()
-    #if uncertainties in ["none", "stat"]:
-    #    hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
-    #else:
-    hist = ROOT.TH2D(hist_name, hist_name, 8, 0, 8, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
-    scale_hists = []
-    if "scale" in uncertainties or uncertainties == "all":
-        for i in range(len(getQCDScaleExpressions(selection))):
-            scale_hists.append(
-                ROOT.TH1D(hist_name+"_scale%i" % i, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax']))
+    final_hist = ROOT.gProof.GetOutputList().FindObject(hist_name)
+    if final_hist:
+        final_hist.Delete()
+    final_hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
     log_info = ""
+    is_data = False
     if "data" in plot_group: 
+        is_data = True
+        scale_unc = False
         for blind in blinding: 
             if branch_name in blind:
                 cut_string = appendCut(cut_string, blind)
+    scale_unc = False
+    scalebins = [8,0,8]
+    sum_hist = final_hist
+    if "scale" in uncertainties or uncertainties == "all":
+        scale_unc = True
+        scale_name = hist_name + "_lheWeights"
+        scale_hist = ROOT.TH2D(scale_name, scale_name, 8, 0, 8, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
+        sum_hist = scale_hist
     original_cut_string = cut_string
     for name, entry in hist_info.iteritems():
         producer = entry["histProducer"]
@@ -256,66 +261,74 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels, 
         log_info += "\n" + "-"*70 +"\nName is %s entry is %s" % (name, entry)
         for tree in trees:
             state = tree.split("/")[0] if "ntuple" in tree else ""
-            log_info += "\nFor state %s" % state
             config_factory.setProofAliases(state)
             # Don't enter an infinite loop of adding aliases
             if cut_string == original_cut_string:
                 cut_string = config_factory.hackInAliases(cut_string)
-            if "WZxsec2016" in selection and not "data" in name and not no_scalefacs:
+            if "WZxsec2016" in selection and not is_data and not no_scalefacs:
                 scale_expr = getScaleFactorExpression(state, "medium", "tightW")
                 weighted_cut_string = appendCut(cut_string, scale_expr)
             else:
                 weighted_cut_string = cut_string 
-            #draw_expr = config_factory.getHistDrawExpr(branch_name, name, state)
-            scalebins = [8,0,8]
-            draw_expr = config_factory.getHist2DWeightDrawExpr(branch_name, name, state, scalebins)
-            weighted_cut_string = appendCut(cut_string, "scaleWeights/scaleWeights[0]")
+            draw_expr = config_factory.getHistDrawExpr(branch_name, name, state)
+            if scale_unc:
+                draw_expr = config_factory.getHist2DWeightDrawExpr(branch_name, name, state, scalebins)
+                weighted_cut_string = appendCut(cut_string, "scaleWeights/scaleWeights[0]")
             producer.setCutString(weighted_cut_string)
-            print draw_expr
             logging.debug("Draw expression was %s" % draw_expr)
             proof_name = "_".join([name, "%s#/%s" % (selection.replace("/", "_"), tree)])
             logging.debug("Proof path was %s" % proof_name)
             try:
-                state_hist = producer.produce(draw_expr, proof_name, overflow=addOverflow)
-                hist.Add(state_hist)
-                log_info += "\nNumber of events: %f" % state_hist.Integral()
-                if ("scale" in uncertainties or uncertainties == "all") and not "data" in name:
-                    for i,scale_expr in enumerate(getQCDScaleExpressions(selection)):
-                        producer.setCutString(appendCut(weighted_cut_string,
-                            scale_expr)
-                        )
-                        scale_statehist = producer.produce(draw_expr, proof_name, overflow=addOverflow)
-                        # Ignore scale uncertainties for samples without weights
-                        if scale_statehist.GetEntries() == 0:
-                            scale_statehist = state_hist
-                        scale_hists[i].Add(scale_statehist)
+                state_hist = producer.produce(draw_expr, proof_name)
+                sum_hist.Add(state_hist)
+                log_info += "\nNumber of events in tree %s: %f" % (tree, state_hist.Integral())
             except ValueError as error:
                 logging.warning(error)
                 log_info += "\nNumber of events: 0.0" 
-        if len(scale_hists) == 0:
-            scale_hists.append(hist)
-        log_info += "total number of events: %f" % hist.Integral()
-        embed()
-        config_factory.setHistAttributes(hist, branch_name, plot_group)
+        log_info += "Total number of events: %f" % final_hist.Integral()
+    if scale_unc:
+        final_hist = histWithScaleUnc(scale_hist, 8, hist_name)
+        sum_hist.Delete()
+    config_factory.setHistAttributes(final_hist, branch_name, plot_group)
+    #if "scale" in uncertainties or "all" in uncertainties:
+    if uncertainties == "all":
+        config_factory.addErrorToHist(final_hist, plot_group)
+    logging.debug(log_info)
+    logging.debug("Hist has %i entries" % final_hist.GetEntries())
+    if addOverflow:
+        # Returns num bins + overflow + underflow
+        num_bins = final_hist.GetSize() - 2
+        add_overflow = final_hist.GetBinContent(num_bins) + final_hist.GetBinContent(num_bins + 1)
+        final_hist.SetBinContent(num_bins, add_overflow)
+    return final_hist
+
+def histWithScaleUnc(scale_hist2D, entries, name):
+    if not isinstance(scale_hist2D, ROOT.TH2):
+        raise ValueError("Scale uncertainties require 2D histogram")
+    scale_hist = scale_hist2D.ProjectionY(name, 1, 1, "e")
+    scale_hist.Sumw2()
+    hists = []
+    for i in range(1, entries+1):
+        hist = scale_hist2D.ProjectionY(name+"_weight%i" % i, i, i, "e")
+        hist.Sumw2()
+        hists.append(hist)
+    # Choose max variation between scale choices by bin
     for i in range(1, hist.GetNbinsX()+1):
         try:
-            maxScale = max([h.GetBinContent(i) for h in scale_hists \
+            maxScale = max([h.GetBinContent(i) for h in hists \
                     if not h.GetBinContent(i) == 0])
-            minScale = min([h.GetBinContent(i) for h in scale_hists \
+            minScale = min([h.GetBinContent(i) for h in hists \
                     if not h.GetBinContent(i) == 0])
-            scaleUp_diff = maxScale - hist.GetBinContent(i)
-            scaleDown_diff = hist.GetBinContent(i) - minScale
+            scaleUp_diff = maxScale - scale_hist.GetBinContent(i)
+            scaleDown_diff = scale_hist.GetBinContent(i) - minScale
             maxScaleErr = max(scaleUp_diff, scaleDown_diff)
         except:
             maxScaleErr = 0
         # Just symmetric errors for now
-        err = math.sqrt(hist.GetBinError(i)**2 + maxScaleErr**2)
-        hist.SetBinError(i, err)
-    if uncertainties == "all":
-        config_factory.addErrorToHist(hist, plot_group)
-    logging.debug(log_info)
-    logging.debug("Hist has %i entries" % hist.GetEntries())
-    return hist
+        err = math.sqrt(scale_hist.GetBinError(i)**2 + maxScaleErr**2)
+        scale_hist.SetBinError(i, err)
+    return scale_hist 
+
 def appendCut(cut_string, add_cut):
     if cut_string != "" and add_cut not in cut_string:
         append_cut = lambda x: "*(%s)" % x if x not in ["", None] else x
@@ -330,52 +343,7 @@ def getScaleFactorExpression(state, muonId, electronId):
         return getScaleFactorExpressionMedTightWElec(state)
     else:
         return "1"
-def getQCDScaleExpressions(selection):
-    if "WZxsec2016" in selection:
-        return ["scaleWeights[1]/scaleWeights[0]",
-            "scaleWeights[2]/scaleWeights[0]",
-            "scaleWeights[3]/scaleWeights[0]",
-            "scaleWeights[4]/scaleWeights[0]",
-            "scaleWeights[6]/scaleWeights[0]",
-            "scaleWeights[8]/scaleWeights[0]",
-        ]
-    elif "GenAnalysis" in selection:
-        return ["LHEweights[1]/LHEweights[0]",
-                "LHEweights[2]/LHEweights[0]",
-                "LHEweights[3]/LHEweights[0]",
-                "LHEweights[4]/LHEweights[0]",
-                "LHEweights[6]/LHEweights[0]",
-                "LHEweights[8]/LHEweights[0]",
-        ]
-    else:
-        return ["1"]
-# Consider only symmetric variations for symmplicity,
-# only need to dram 2 rather than 6 variations
-def getSymmetricQCDScaleExpressions(selection):
-    if "WZxsec2016" in selection:
-        return ["scaleWeights[4]/scaleWeights[0]",
-            "scaleWeights[8]/scaleWeights[0]",
-        ]
-    elif "GenAnalysis" in selection:
-        return ["LHEweights[4]/LHEweights[0]",
-                "LHEweights[8]/LHEweights[0]",
-        ]
-    else:
-        return ["1"]
-def getQCDScaleDownExpression(selection):
-    if "WZxsec2016" in selection:
-        return "minScaleWeight/scaleWeights[0]"
-    elif "GenAnalysis" in selection:
-        return "minScaleWeight"
-    else:
-        return "1"
-def getQCDScaleUpExpression(selection):
-    if "WZxsec2016" in selection:
-        return "maxScaleWeight/scaleWeights[0]"
-    elif "GenAnalysis" in selection:
-        return "maxScaleWeight"
-    else:
-        return "1"
+
 def getScaleFactorExpressionMedTightWElec(state):
     if state == "eee":
         return "e1MediumIDSF*" \
