@@ -41,7 +41,6 @@ class ConfigHistFactory(object):
         draw_expr = draw_expr.replace(object_name, object_name + ":Iteration$", 1)
         return draw_expr
     def getHistDrawExpr(self, object_name, dataset_name, channel):
-
         hist_name = '_'.join([x for x in [dataset_name, channel, object_name] 
             if x != ""])
         object_entry = object_name if object_name in self.plot_objects else object_name.split("_")[0]
@@ -94,7 +93,7 @@ class ConfigHistFactory(object):
                 if plot_group not in self.plot_groups.keys() else self.plot_groups[plot_group]
         hist.SetTitle(plot_group['Name'])
         config.setAttributes(hist, self.styles[plot_group['Style']])
-        object_name = object_name if object_name in self.plot_objects else object_name.split("_")[0]
+        #object_name = object_name if object_name in self.plot_objects else object_name.split("_")[0]
         config.setAttributes(hist, self.plot_objects[object_name]['Attributes'])
     def addErrorToHist(self, hist, plot_group_name):
         # If not a valid plot group, try treating it as file entry

@@ -1,6 +1,8 @@
 import ROOT
 import WeightInfo
 import logging
+from IPython import embed
+
 class WeightedHistProducer(object):
     def __init__(self, weight_info, weight_branch):
         self.weight_info = weight_info 
@@ -44,6 +46,8 @@ class WeightedHistProducer(object):
         proof.DrawSelect(proof_path, draw_expr, draw_cut, "goff", -1)
         hist_name = draw_expr.split(">>")[1].split("(")[0]
         hist = proof.GetOutputList().FindObject(hist_name)
+        ROOT.SetOwnership(hist,False)
+        #embed()
         if not hist:
             raise ValueError('\n'.join(["Empty histogram produced!",
                 "\tProof path was %s:" % proof_path,

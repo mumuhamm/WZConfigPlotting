@@ -14,7 +14,7 @@ import errno
 import math
 from IPython import embed
 
-#logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 
 def makePlot(hist_stack, data_hist, branch_name, args, signal_stack=0):
     stack_drawexpr = " ".join(["hist"] + 
@@ -235,7 +235,6 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels, 
     final_hist = ROOT.gProof.GetOutputList().FindObject(hist_name)
     if final_hist:
         final_hist.Delete()
-    final_hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
     log_info = ""
     is_data = False
     if "data" in plot_group: 
@@ -246,14 +245,17 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels, 
                 cut_string = appendCut(cut_string, blind)
     scale_unc = False
     scalebins = [8,0,8]
-    sum_hist = final_hist
+    group_sum_hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
+    no_weights = ["st-tchan-tbar","st-tchan-t","st-schan", "ggZZ4e", "ggZZ4m", "ggZZ2e2mu", "st-tw", "st-tbarw"]
+
     if "scale" in uncertainties or uncertainties == "all":
         scale_unc = True
         scale_name = hist_name + "_lheWeights"
-        scale_hist = ROOT.TH2D(scale_name, scale_name, 8, 0, 8, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
-        sum_hist = scale_hist
     original_cut_string = cut_string
-    for name, entry in hist_info.iteritems():
+    for name, entry in hist_info.iteritems():   
+        sum_hist = group_sum_hist
+        if scale_unc and name not in no_weights:
+            sum_hist = ROOT.TH2D(scale_name, scale_name, 8, 0, 8, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
         producer = entry["histProducer"]
         weight = config_factory.getPlotGroupWeight(plot_group)
         if weight != 1:
@@ -271,7 +273,8 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels, 
             else:
                 weighted_cut_string = cut_string 
             draw_expr = config_factory.getHistDrawExpr(branch_name, name, state)
-            if scale_unc:
+            print "NAME IS", name
+            if scale_unc and name not in no_weights:
                 draw_expr = config_factory.getHist2DWeightDrawExpr(branch_name, name, state, scalebins)
                 weighted_cut_string = appendCut(cut_string, "scaleWeights/scaleWeights[0]")
             producer.setCutString(weighted_cut_string)
@@ -281,20 +284,23 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels, 
             try:
                 state_hist = producer.produce(draw_expr, proof_name)
                 sum_hist.Add(state_hist)
-                log_info += "\nNumber of events in tree %s: %f" % (tree, state_hist.Integral())
+                log_info += "\nNumber of weighted events in tree %s: %f" % (tree, state_hist.Integral())
             except ValueError as error:
                 logging.warning(error)
                 log_info += "\nNumber of events: 0.0" 
-        log_info += "Total number of events: %f" % final_hist.Integral()
-    if scale_unc:
-        final_hist = histWithScaleUnc(scale_hist, 8, hist_name)
-        sum_hist.Delete()
+        if scale_unc and not name in no_weights:
+            scale_hist = histWithScaleUnc(sum_hist, 8, hist_name+"_scale")
+            sum_hist.Delete()
+            group_sum_hist.Add(scale_hist)
+            log_info += "\nTotal number of weighted events for file %s is: %f" % (str(name), scale_hist.Integral())
+    final_hist = group_sum_hist
+    log_info += "\nTotal number of weighted events: %f" % final_hist.Integral()
     config_factory.setHistAttributes(final_hist, branch_name, plot_group)
     #if "scale" in uncertainties or "all" in uncertainties:
     if uncertainties == "all":
         config_factory.addErrorToHist(final_hist, plot_group)
     logging.debug(log_info)
-    logging.debug("Hist has %i entries" % final_hist.GetEntries())
+    logging.debug("Hist has %i raw entries" % final_hist.GetEntries())
     if addOverflow:
         # Returns num bins + overflow + underflow
         num_bins = final_hist.GetSize() - 2
@@ -305,15 +311,16 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels, 
 def histWithScaleUnc(scale_hist2D, entries, name):
     if not isinstance(scale_hist2D, ROOT.TH2):
         raise ValueError("Scale uncertainties require 2D histogram")
-    scale_hist = scale_hist2D.ProjectionY(name, 1, 1, "e")
-    scale_hist.Sumw2()
+    scale_hist = scale_hist2D.ProjectionY("temp", 1, 1, "e")
+    scale_hist.SetName(name)
+    ROOT.SetOwnership(scale_hist, False)
     hists = []
-    for i in range(1, entries+1):
+    for i in range(2, entries+1):
         hist = scale_hist2D.ProjectionY(name+"_weight%i" % i, i, i, "e")
         hist.Sumw2()
         hists.append(hist)
     # Choose max variation between scale choices by bin
-    for i in range(1, hist.GetNbinsX()+1):
+    for i in range(1, scale_hist.GetNbinsX()+1):
         try:
             maxScale = max([h.GetBinContent(i) for h in hists \
                     if not h.GetBinContent(i) == 0])
