@@ -14,7 +14,7 @@ import errno
 import math
 from IPython import embed
 
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 def makePlot(hist_stack, data_hist, branch_name, args, signal_stack=0):
     stack_drawexpr = " ".join(["hist"] + 
@@ -215,9 +215,11 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels, 
     addOverflow=True, cut_string="", luminosity=1, no_scalefacs=False, uncertainties="none"):
     if "Gen" not in selection:
         states = [x.strip() for x in channels.split(",")]
+        scale_weight_expr = "scaleWeights/scaleWeights[0]"
         trees = ["%s/ntuple" % state for state in states]
     else:
         trees = ["analyze%s/Ntuple" % ("ZZ" if "ZZ" in selection else "WZ")]
+        scale_weight_expr = "LHEweights/LHEweights[0]"
         if channels != "eee,mmm,eem,emm":
             chan_cuts = []
             for chan in channels.split(","): 
@@ -276,7 +278,7 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels, 
             print "NAME IS", name
             if scale_unc and name not in no_weights:
                 draw_expr = config_factory.getHist2DWeightDrawExpr(branch_name, name, state, scalebins)
-                weighted_cut_string = appendCut(cut_string, "scaleWeights/scaleWeights[0]")
+                weighted_cut_string = appendCut(cut_string, scale_weight_expr)
             producer.setCutString(weighted_cut_string)
             logging.debug("Draw expression was %s" % draw_expr)
             proof_name = "_".join([name, "%s#/%s" % (selection.replace("/", "_"), tree)])
