@@ -38,7 +38,9 @@ def writeHTML(path, name):
 def getTableRow(image_file):
     return '''    <td style="text-align: center;">
         <img src="{image}" class="autoResizeImage" /><br/>
-        <a href="logs/{name}_event_info.log">[log]</a> - <a href="{name}.pdf">[pdf]</a>
+        <a href="logs/{name}_event_info.log">[log]</a> - 
+        <a href="logs/{name}_event_info-verbose.log">[verbose log]</a> - 
+        <a href="{name}.pdf">[pdf]</a>
     </td>\n'''.format(image=image_file, name=image_file.split(".")[-2])
     
 def main():

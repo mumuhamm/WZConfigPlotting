@@ -184,9 +184,11 @@ def getConfigHistFromFile(histfile, config_factory, plot_group, selection, branc
     if hist:
         hist.Delete()
     hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
-   
+    log_info = "" 
     hist_file = ROOT.TFile(histfile)
     for name, entry in hist_info.iteritems():
+        log_info += "_"*80 + "\n"
+        log_info += "Results for file %s in plot group %s\n" % (name, plot_group)
         for chan in channels.split(","):
             producer = entry["histProducer"]
             hist_name = str("%s/%s_%s" % (name, branch_name, chan))
@@ -195,16 +197,19 @@ def getConfigHistFromFile(histfile, config_factory, plot_group, selection, branc
             state_hist = hist_file.Get(hist_name)
             if not state_hist:
                 logging.warning("Hist %s not found in file %s" % (hist_name, histfile))
-                log_info += "\nNumber of events: 0.0" 
+                log_info += "Number of events in %s channel: 0.0\n"
                 continue
             if not "data" in plot_group and plot_group != "nonprompt":
                 state_hist.Scale(producer.getHistScaleFactor())
             hist.Add(state_hist)
-        log_info += "total number of events: %f" % final_hist.Integral()
+            log_info += "Number of events in %s channel: %0.2f\n" % (chan, state_hist.Integral())
+        log_info += "Total number of events: %0.2f\n" % hist.Integral()
         config_factory.setHistAttributes(hist, branch_name, plot_group)
        # Just symmetric errors for now
     logging.debug(log_info)
     logging.debug("Hist has %i entries" % hist.GetEntries())
+    with open("temp-verbose.txt", "a") as log_file:
+        log_file.write(log_info)
     if addOverflow:
         # Returns num bins + overflow + underflow
         num_bins = hist.GetSize() - 2
@@ -255,6 +260,8 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels, 
         scale_name = hist_name + "_lheWeights"
     original_cut_string = cut_string
     for name, entry in hist_info.iteritems():   
+        log_info += "_"*80 + "\n"
+        log_info += "Results for file %s in plot group %s\n" % (name, plot_group)
         sum_hist = group_sum_hist
         if scale_unc and name not in no_weights:
             sum_hist = ROOT.TH2D(scale_name, scale_name, 8, 0, 8, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
@@ -262,7 +269,6 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels, 
         weight = config_factory.getPlotGroupWeight(plot_group)
         if weight != 1:
             producer.addWeight(weight)
-        log_info += "\n" + "-"*70 +"\nName is %s entry is %s" % (name, entry)
         for tree in trees:
             state = tree.split("/")[0] if "ntuple" in tree else ""
             config_factory.setProofAliases(state)
@@ -283,26 +289,32 @@ def getConfigHist(config_factory, plot_group, selection, branch_name, channels, 
             logging.debug("Draw expression was %s" % draw_expr)
             proof_name = "_".join([name, "%s#/%s" % (selection.replace("/", "_"), tree)])
             logging.debug("Proof path was %s" % proof_name)
+            chan = tree.split("/")[0]
             try:
                 state_hist = producer.produce(draw_expr, proof_name)
                 sum_hist.Add(state_hist)
-                log_info += "\nNumber of weighted events in tree %s: %f" % (tree, state_hist.Integral())
+                log_info += "Number of events in %s channel: %0.2f\n" % (chan, state_hist.Integral())
             except ValueError as error:
                 logging.warning(error)
-                log_info += "\nNumber of events: 0.0" 
+                log_info += "Number of events: 0.0\n" 
+        # Just symmetric errors for now
         if scale_unc and not name in no_weights:
             scale_hist = histWithScaleUnc(sum_hist, 8, hist_name+"_scale")
+            log_info += "Number of events in %s channel: %0.2f\n" % (chan, scale_hist.Integral())
             sum_hist.Delete()
             group_sum_hist.Add(scale_hist)
-            log_info += "\nTotal number of weighted events for file %s is: %f" % (str(name), scale_hist.Integral())
     final_hist = group_sum_hist
-    log_info += "\nTotal number of weighted events: %f" % final_hist.Integral()
+    log_info += "*"*80 + "\n\n"
+    log_info += "Total number of weighted events for plot group %s: %0.2f\n" % (plot_group, final_hist.Integral())
+    log_info += "\n" + "*"*80 + "\n"
     config_factory.setHistAttributes(final_hist, branch_name, plot_group)
     #if "scale" in uncertainties or "all" in uncertainties:
     if uncertainties == "all":
         config_factory.addErrorToHist(final_hist, plot_group)
     logging.debug(log_info)
     logging.debug("Hist has %i raw entries" % final_hist.GetEntries())
+    with open("temp-verbose.txt", "a") as log_file:
+        log_file.write(log_info)
     if addOverflow:
         # Returns num bins + overflow + underflow
         num_bins = final_hist.GetSize() - 2
@@ -446,7 +458,9 @@ def savePlot(canvas, plot_path, html_path, branch_name, write_log_file, args):
         return
     if write_log_file:
         log_file = "/".join([plot_path, "logs", "%s_event_info.log" % branch_name])
+        verbose_log = log_file.replace("event_info", "event_info-verbose")
         shutil.move("temp.txt", log_file) 
+        shutil.move("temp-verbose.txt", verbose_log) 
     output_name ="/".join([plot_path, branch_name]) 
     canvas.Print(output_name + ".root")
     canvas.Print(output_name + ".C")
@@ -460,6 +474,7 @@ def savePlot(canvas, plot_path, html_path, branch_name, write_log_file, args):
         if write_log_file:
             makeDirectory("/".join([html_path, "logs"]))
             shutil.copy(log_file, log_file.replace(plot_path, html_path))
+            shutil.copy(verbose_log, verbose_log.replace(plot_path, html_path))
     del canvas
 
 def makeDirectory(path):
