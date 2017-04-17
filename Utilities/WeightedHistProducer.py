@@ -1,37 +1,29 @@
 import ROOT
-import WeightInfo
+from HistProducer import HistProducer
 import logging
 from IPython import embed
 
-class WeightedHistProducer(object):
-    def __init__(self, weight_info, weight_branch):
-        self.weight_info = weight_info 
-        self.cut_string = ""
-        self.weight_branch = weight_branch
+class WeightedHistProducer(HistProducer):
+    def __init__(self, weight_info, weight_branch=""):
+        super(WeightedHistProducer, self).__init__(weight_info)
         self.event_weight = self.weight_info.getCrossSection()/self.weight_info.getSumOfWeights() \
             if self.weight_info.getSumOfWeights() > 0 else 0
-        self.lumi = 1/self.event_weight if self.event_weight > 0 else 1
-    def getHistScaleFactor(self):
-        return self.weight_info.getCrossSection()*self.lumi/self.weight_info.getSumOfWeights() \
-                        if self.weight_info.getSumOfWeights() > 0 else 0
+        self.cut_string = ""
+        self.weight_branch = weight_branch
+
     def setWeightBranch(self, weight_branch):
         self.weight_branch = weight_branch
+
     def setCutString(self, cut_string):
         self.cut_string = cut_string
+
     def addWeight(self, weight):
         append_cut = lambda x: "*(%s)" % x if x not in ["", None] else x
         if self.weight_branch not in ["", None]:
             self.weight_branch += append_cut(weight)
         else:
             self.weight_branch = weight
-    def getCrossSection(self):
-        return self.weight_info.getCrossSection()
-    def setLumi(self, lumi, units='pb-1'):
-        if units == 'pb-1':
-            lumi *= 1000
-        elif units != 'fb-1':
-            raise ValueError("Invalid luminosity units! Options are 'pb-1' and 'fb-1'")
-        self.lumi = lumi if lumi > 0 else 1/self.getCrossSection()
+
     def produce(self, draw_expr, proof_path="", cut_string="", overflow=False): 
         proof = ROOT.gProof
         if cut_string == "":

@@ -1,7 +1,8 @@
 import ROOT
 import plot_functions as plotter
 import Utilities.WeightInfo as WeightInfo
-import Utilities.WeightedHistProducer as WeightedHistProducer
+from Utilities.WeightedHistProducer import WeightedHistProducer
+from Utilities.FromFileHistProducer import FromFileHistProducer
 from Utilities.ConfigHistFactory import ConfigHistFactory 
 from collections import OrderedDict
 import os
@@ -136,7 +137,7 @@ def getPrettyLegend(hist_stack, data_hist, signal_stack, error_hists, coords):
     for error_hist in error_hists:
         legend.AddEntry(error_hist, error_hist.GetTitle(), "f")
     return legend
-def getHistFactory(config_factory, selection, filelist, luminosity=1):
+def getHistFactory(config_factory, selection, filelist, luminosity=1, hist_file=None):
     if "Gen" not in selection:
         metaTree_name = "metaInfo/metaInfo"
         sum_weights_branch = "summedWeights"
@@ -154,7 +155,7 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1):
                 (name, selection))
             continue
         hist_factory[name] = dict(all_files[name])
-        if "data" not in name.lower():
+        if "data" not in name.lower() and name != "nonprompt":
             base_name = name.split("__")[0]
             metaTree = ROOT.TChain(metaTree_name)
             metaTree.Add(hist_factory[name]["file_path"])
@@ -162,22 +163,27 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1):
             weight_info = WeightInfo.WeightInfoProducer(metaTree, 
                     mc_info[base_name]['cross_section']*kfac,
                     sum_weights_branch).produce()
-            histProducer = WeightedHistProducer.WeightedHistProducer(weight_info, weight_branch)  
-            histProducer.setLumi(luminosity)
         else:
-            histProducer = WeightedHistProducer.WeightedHistProducer(
-                    WeightInfo.WeightInfo(1, 1,), "")  
+            weight_info = WeightInfo.WeightInfo(1, 1)
+            weight_branch = ""
+        if not hist_file:
+            histProducer = WeightedHistProducer(weight_info, weight_branch)  
+        else:
+            histProducer = FromFileHistProducer(weight_info, hist_file)  
+        histProducer.setLumi(luminosity)
         hist_factory[name].update({"histProducer" : histProducer})
     return hist_factory
-def getConfigHistFromFile(histfile, config_factory, plot_group, selection, branch_name, channels,
-        luminosity=1, blinding=[], addOverflow=True, uncertainties="none"):
+def getConfigHistFromFile(filename, config_factory, plot_group, selection, branch_name, channels,
+        luminosity=1, addOverflow=True, uncertainties="none"):
     try:
         filelist = config_factory.getPlotGroupMembers(plot_group)
     except ValueError as e:
         logging.warning(e.message)
         logging.warning("Treating %s as file name" % plot_group)
         filelist = [plot_group]
-    hist_info = getHistFactory(config_factory, selection, filelist, luminosity)
+    hist_file = ROOT.TFile(filename)
+    ROOT.SetOwnership(hist_file, False)
+    hist_info = getHistFactory(config_factory, selection, filelist, luminosity, hist_file)
     bin_info = config_factory.getHistBinInfo(branch_name)
     hist_name = "_".join([plot_group, selection.replace("/", "_"), branch_name.split("_")[0]])
     hist = ROOT.gROOT.FindObject(hist_name)
@@ -185,7 +191,6 @@ def getConfigHistFromFile(histfile, config_factory, plot_group, selection, branc
         hist.Delete()
     hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
     log_info = "" 
-    hist_file = ROOT.TFile(histfile)
     for name, entry in hist_info.iteritems():
         log_info += "_"*80 + "\n"
         log_info += "Results for file %s in plot group %s\n" % (name, plot_group)
@@ -194,13 +199,11 @@ def getConfigHistFromFile(histfile, config_factory, plot_group, selection, branc
             hist_name = str("%s/%s_%s" % (name, branch_name, chan))
             if "nonprompt" in str(plot_group).lower():
                 hist_name = hist_name.replace(chan, "Fakes_"+chan)
-            state_hist = hist_file.Get(hist_name)
+            state_hist = producer.produce(hist_name, addOverflow)
             if not state_hist:
                 logging.warning("Hist %s not found in file %s" % (hist_name, histfile))
                 log_info += "Number of events in %s channel: 0.0\n"
                 continue
-            if not "data" in plot_group and plot_group != "nonprompt":
-                state_hist.Scale(producer.getHistScaleFactor())
             hist.Add(state_hist)
             log_info += "Number of events in %s channel: %0.2f\n" % (chan, state_hist.Integral())
         log_info += "Total number of events: %0.2f\n" % hist.Integral()
@@ -210,13 +213,8 @@ def getConfigHistFromFile(histfile, config_factory, plot_group, selection, branc
     logging.debug("Hist has %i entries" % hist.GetEntries())
     with open("temp-verbose.txt", "a") as log_file:
         log_file.write(log_info)
-    if addOverflow:
-        # Returns num bins + overflow + underflow
-        num_bins = hist.GetSize() - 2
-        add_overflow = hist.GetBinContent(num_bins) + hist.GetBinContent(num_bins + 1)
-        hist.SetBinContent(num_bins, add_overflow)
     return hist
-def getConfigHist(config_factory, plot_group, selection, branch_name, channels, blinding=[],
+def getConfigHistFromTree(config_factory, plot_group, selection, branch_name, channels, blinding=[],
     addOverflow=True, cut_string="", luminosity=1, no_scalefacs=False, uncertainties="none"):
     if "Gen" not in selection:
         states = [x.strip() for x in channels.split(",")]

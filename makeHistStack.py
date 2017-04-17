@@ -80,7 +80,7 @@ def getStacked(name, config_factory, selection, filelist, branch_name, channels,
     hist_info = {}
     for plot_set in filelist:
         if hist_file == "":
-            hist = helper.getConfigHist(config_factory, plot_set, selection,  
+            hist = helper.getConfigHistFromTree(config_factory, plot_set, selection,  
                     branch_name, channels, blinding, addOverflow, cut_string, luminosity,
                     no_scalefacs, uncertainties)
         else:
@@ -132,7 +132,7 @@ def main():
                 args.luminosity, args.no_scalefactors, args.uncertainties, args.hist_file)
         if not args.no_data:
             if args.hist_file == "":
-                data_hist = helper.getConfigHist(config_factory, "data_2016", args.selection, 
+                data_hist = helper.getConfigHistFromTree(config_factory, "data_2016", args.selection, 
                         branch_name, args.channels, args.blinding, not args.no_overflow, cut_string)
             else:
                 data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_2016", 
