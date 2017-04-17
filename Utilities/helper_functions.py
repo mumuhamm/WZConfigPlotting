@@ -173,25 +173,15 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, hist_file=
         histProducer.setLumi(luminosity)
         hist_factory[name].update({"histProducer" : histProducer})
     return hist_factory
-def getConfigHistFromFile(filename, config_factory, plot_group, selection, branch_name, channels,
-        luminosity=1, addOverflow=True, uncertainties="none"):
-    try:
-        filelist = config_factory.getPlotGroupMembers(plot_group)
-    except ValueError as e:
-        logging.warning(e.message)
-        logging.warning("Treating %s as file name" % plot_group)
-        filelist = [plot_group]
-    hist_file = ROOT.TFile(filename)
-    ROOT.SetOwnership(hist_file, False)
-    hist_info = getHistFactory(config_factory, selection, filelist, luminosity, hist_file)
-    bin_info = config_factory.getHistBinInfo(branch_name)
+def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, channels, 
+        addOverflow=True, uncertainties="none", cut_string="", blinding=[]):
     hist_name = "_".join([plot_group, selection.replace("/", "_"), branch_name.split("_")[0]])
     hist = ROOT.gROOT.FindObject(hist_name)
     if hist:
         hist.Delete()
     hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
     log_info = "" 
-    for name, entry in hist_info.iteritems():
+    for name, entry in hist_factory.iteritems():
         log_info += "_"*80 + "\n"
         log_info += "Results for file %s in plot group %s\n" % (name, plot_group)
         for chan in channels.split(","):
@@ -207,13 +197,29 @@ def getConfigHistFromFile(filename, config_factory, plot_group, selection, branc
             hist.Add(state_hist)
             log_info += "Number of events in %s channel: %0.2f\n" % (chan, state_hist.Integral())
         log_info += "Total number of events: %0.2f\n" % hist.Integral()
-        config_factory.setHistAttributes(hist, branch_name, plot_group)
-       # Just symmetric errors for now
     logging.debug(log_info)
     logging.debug("Hist has %i entries" % hist.GetEntries())
     with open("temp-verbose.txt", "a") as log_file:
         log_file.write(log_info)
     return hist
+
+def getConfigHistFromFile(filename, config_factory, plot_group, selection, branch_name, channels,
+        luminosity=1, addOverflow=True, uncertainties="none"):
+    try:
+        filelist = config_factory.getPlotGroupMembers(plot_group)
+    except ValueError as e:
+        logging.warning(e.message)
+        logging.warning("Treating %s as file name" % plot_group)
+        filelist = [plot_group]
+    hist_file = ROOT.TFile(filename)
+    ROOT.SetOwnership(hist_file, False)
+    hist_factory = getHistFactory(config_factory, selection, filelist, luminosity, hist_file)
+    bin_info = config_factory.getHistBinInfo(branch_name)
+
+    hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, channels, uncertainties="none")
+    config_factory.setHistAttributes(hist, branch_name, plot_group)
+    return hist
+
 def getConfigHistFromTree(config_factory, plot_group, selection, branch_name, channels, blinding=[],
     addOverflow=True, cut_string="", luminosity=1, no_scalefacs=False, uncertainties="none"):
     if "Gen" not in selection:
