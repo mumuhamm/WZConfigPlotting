@@ -24,7 +24,7 @@ class WeightedHistProducer(HistProducer):
         else:
             self.weight_branch = weight
 
-    def produce(self, draw_expr, proof_path="", cut_string="", overflow=False): 
+    def produce(self, draw_expr, proof_path="", overflow=False, cut_string=""): 
         proof = ROOT.gProof
         if cut_string == "":
             cut_string = self.cut_string
@@ -44,7 +44,8 @@ class WeightedHistProducer(HistProducer):
             raise ValueError('\n'.join(["Empty histogram produced!",
                 "\tProof path was %s:" % proof_path,
                 "\tDraw expression was: %s" % draw_expr,
-                "\tCut string was: %s" % cut_string]))
+                "\tCut string was: %s" % cut_string,
+                "\tWeight string was: %s" % weight_string]))
         if not hist.GetSumw2(): hist.Sumw2()
         if overflow:
             # Returns num bins + overflow + underflow
