@@ -14,6 +14,7 @@ import array
 import datetime
 from Utilities.scripts import makeSimpleHtml
 from IPython import embed
+import logging
 
 def getComLineArgs():
     parser = UserInput.getDefaultParser()
@@ -63,6 +64,8 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
     sigbkgd = 0 if weighted_events <= 0 else signal/weighted_events
     sigbkgd_err = 0 if signal <= 0 or weighted_events <= 0 else \
         sigbkgd*math.sqrt((signal_err/signal)**2 + (total_err/weighted_events)**2)
+    if weighted_events == 0:
+        raise RuntimeError("Empty histogram produced for variable " + branch_name)
     with open("temp.txt", "a") as mc_file:
         mc_file.write(mc_info.get_string())
         mc_file.write("\nTotal sum of Monte Carlo: %0.2f +/- %0.2f" % (round(weighted_events, 2), 
@@ -127,9 +130,13 @@ def main():
             mc_file.write("\nAdditional cut: %s" % ("None" if cut_string == "" else cut_string))
             mc_file.write("\nLuminosity: %0.2f fb^{-1}" % (args.luminosity))
             mc_file.write("\nPlotting branch: %s\n" % branch_name)
-        hist_stack = getStacked("stack", config_factory, args.selection, filelist, 
-                branch_name, args.channels, args.blinding, not args.no_overflow, cut_string,
-                args.luminosity, args.no_scalefactors, args.uncertainties, args.hist_file)
+        try:
+            hist_stack = getStacked("stack", config_factory, args.selection, filelist, 
+                    branch_name, args.channels, args.blinding, not args.no_overflow, cut_string,
+                    args.luminosity, args.no_scalefactors, args.uncertainties, args.hist_file)
+        except RuntimeError as e:
+            logging.warning(e)
+            continue
         if not args.no_data:
             if args.hist_file == "":
                 data_hist = helper.getConfigHistFromTree(config_factory, "data_2016", args.selection, 

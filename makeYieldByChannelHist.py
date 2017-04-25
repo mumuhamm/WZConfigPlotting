@@ -53,6 +53,7 @@ for chan in reversed(sorted(args.channels.split(","))):
 filelist = UserInput.getListOfFiles(args.files_to_plot, args.selection)
 if not args.no_data:
     data_hist = cutflow_maker.getHist("data_2016", "stat", args.hist_file)
+    print "Integral is", data_hist.GetBinContent(1)
 else:
     data_hist = 0
 hist_stack = getMonteCarloStack("stack", cutflow_maker, filelist, 

@@ -183,9 +183,9 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
     hist = getattr(ROOT, rootdir).FindObject(hist_name)
     if hist:
         hist.Delete()
-    hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
+    if not hist_factory.itervalues().next()["fromFile"]:
+        hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
     log_info = "" 
-    print "In getConfigHist it's", cut_string
     for name, entry in hist_factory.iteritems():
         log_info += "_"*80 + "\n"
         log_info += "Results for file %s in plot group %s\n" % (name, plot_group)
@@ -193,6 +193,7 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
         config_factory = entry["configFactory"]
         for state in states:
             if entry["fromFile"]:
+                chan = state
                 hist_name = str("%s/%s_%s" % (name, branch_name, state))
                 if "nonprompt" in str(plot_group).lower():
                     hist_name = hist_name.replace(state, "Fakes_"+state)
@@ -207,18 +208,25 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
             
             try:
                 state_hist = producer.produce(*args)
-                log_info += "Number of events in %s channel: %0.2f\n" % (chan, state_hist.Integral())
+                if not hist:
+                    hist = state_hist
+                    hist.SetName(hist_name)
+                    if state_hist.InheritsFrom("TH1"):
+                        hist.SetTitle(hist_name)
             except ValueError as error:
                 logging.warning(error)
-                log_info += "Number of events: 0.0\n" 
+                log_info += "Number of events in %s channel: 0.0\n"  % state
                 continue
             hist.Add(state_hist)
             log_info += "Number of events in %s channel: %0.2f\n" % (state, state_hist.Integral())
-        log_info += "Total number of events: %0.2f\n" % hist.Integral()
+        log_info += "Total number of events: %0.2f\n" % (hist.Integral() if hist and hist.InheritsFrom("TH1") else 0)
+        log_info += "Cross section is %0.2f\n" % producer.getCrossSection()
     logging.debug(log_info)
-    logging.debug("Hist has %i entries" % hist.GetEntries())
+    logging.debug("Hist has %i entries" % (hist.GetEntries() if hist and hist.InheritsFrom("TH1") else 0) )
     with open("temp-verbose.txt", "a") as log_file:
         log_file.write(log_info)
+    if not hist or not hist.InheritsFrom("TH1"):
+        raise RuntimeError("Invalid histogram %s for selection %s" % (branch_name, selection))
     return hist
 
 def getConfigHistFromFile(filename, config_factory, plot_group, selection, branch_name, channels,
@@ -229,19 +237,20 @@ def getConfigHistFromFile(filename, config_factory, plot_group, selection, branc
         logging.warning(e.message)
         logging.warning("Treating %s as file name" % plot_group)
         filelist = [plot_group]
+    if branch_name not in config_factory.getListOfPlotObjects():
+        raise ValueError("Invalid histogram %s for selection %s" % (branch_name, selection))
     hist_file = ROOT.TFile(filename)
     ROOT.SetOwnership(hist_file, False)
     hist_factory = getHistFactory(config_factory, selection, filelist, luminosity, hist_file)
     bin_info = config_factory.getHistBinInfo(branch_name)
     states = channels.split(",")
-
     hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, uncertainties)
     config_factory.setHistAttributes(hist, branch_name, plot_group)
+    
     return hist
 
 def getConfigHistFromTree(config_factory, plot_group, selection, branch_name, channels, blinding=[],
     addOverflow=True, cut_string="", luminosity=1, no_scalefacs=False, uncertainties="none"):
-    print "CUT STRING IS", cut_string
     if "Gen" not in selection:
         states = [x.strip() for x in channels.split(",")]
         scale_weight_expr = "scaleWeights/scaleWeights[0]"
