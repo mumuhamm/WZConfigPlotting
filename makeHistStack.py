@@ -135,7 +135,7 @@ def main():
                     branch_name, args.channels, args.blinding, not args.no_overflow, cut_string,
                     args.luminosity, args.no_scalefactors, args.uncertainties, args.hist_file)
         except RuntimeError as e:
-            logging.warning(e)
+            logging.warning('\033[91m'+ str(e)+'\033[0m')
             continue
         if not args.no_data:
             if args.hist_file == "":
