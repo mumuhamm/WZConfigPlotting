@@ -186,6 +186,7 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
     if not hist_factory.itervalues().next()["fromFile"]:
         hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
     log_info = "" 
+    final_counts = {c : 0 for c in states}
     for name, entry in hist_factory.iteritems():
         log_info += "_"*80 + "\n"
         log_info += "Results for file %s in plot group %s\n" % (name, plot_group)
@@ -208,21 +209,29 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
             
             try:
                 state_hist = producer.produce(*args)
-                if not hist:
-                    hist = state_hist
-                    hist.SetName(hist_name)
-                    if state_hist.InheritsFrom("TH1"):
-                        hist.SetTitle(hist_name)
             except ValueError as error:
                 logging.warning(error)
                 log_info += "Number of events in %s channel: 0.0\n"  % state
                 continue
-            hist.Add(state_hist)
+            if not hist:
+                hist = state_hist
+                hist.SetName(hist_name)
+                if state_hist.InheritsFrom("TH1"):
+                    hist.SetTitle(hist_name)
+            else:
+                hist.Add(state_hist)
+            final_counts[state] += state_hist.Integral()
             log_info += "Number of events in %s channel: %0.2f\n" % (state, state_hist.Integral())
         log_info += "Total number of events: %0.2f\n" % (hist.Integral() if hist and hist.InheritsFrom("TH1") else 0)
         log_info += "Cross section is %0.2f\n" % producer.getCrossSection()
     logging.debug(log_info)
     logging.debug("Hist has %i entries" % (hist.GetEntries() if hist and hist.InheritsFrom("TH1") else 0) )
+    log_info += "*"*80 + "\n"
+    log_info += "    Summary for plot group %s\n" % plot_group
+    log_info += "    Total entries in all states: %0.2f\n" % hist.Integral()
+    for state in states:
+        log_info += "    %0.2f events in state %s\n" % (final_counts[state], state)
+    log_info += "*"*80 + "\n"
     with open("temp-verbose.txt", "a") as log_file:
         log_file.write(log_info)
     if not hist or not hist.InheritsFrom("TH1"):
