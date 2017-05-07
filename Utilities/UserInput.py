@@ -81,7 +81,8 @@ def getDefaultParser():
                         "separated by a comma (match name in file_info.json)")
     return parser 
 def getListOfFiles(file_set, selection):
-    if "WZxsec2016" in file_set:
+    file_set = file_set.lower()
+    if "wzxsec2016" in file_set:
         filelist = []
         if "nonprompt" in file_set:
             filelist.append("nonprompt")

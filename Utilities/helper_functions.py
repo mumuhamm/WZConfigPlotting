@@ -228,7 +228,7 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
     logging.debug("Hist has %i entries" % (hist.GetEntries() if hist and hist.InheritsFrom("TH1") else 0) )
     log_info += "*"*80 + "\n"
     log_info += "    Summary for plot group %s\n" % plot_group
-    log_info += "    Total entries in all states: %0.2f\n" % hist.Integral()
+    log_info += "    Total entries in all states: %0.2f\n" % (hist.Integral() if hist and hist.InheritsFrom("TH1") else 0)
     for state in states:
         log_info += "    %0.2f events in state %s\n" % (final_counts[state], state)
     log_info += "*"*80 + "\n"
