@@ -29,7 +29,7 @@ def writeHTML(path, name):
         if "Nonprompt" in path:
             relative_path = path.split("/")[-1].replace("Nonprompt", "MC") 
             index.write('  <div style="text-align: center;">Monte Carlo based plots: \n'
-                    '  <a href="../%s">[Nonprompt plots]</a>' % relative_path +
+                    '  <a href="../%s">[MC plots]</a>' % relative_path +
                     '</div>\n'
                     '  <table>\n'
             )
@@ -46,6 +46,15 @@ def writeHTML(path, name):
                     '  <a href="eem">[eem]</a> - '
                     '  <a href="emm">[emm]</a> - '
                     '  <a href="mmm">[mmm]</a>'
+                    '</div>\n'
+                    '  <table>\n'
+            )
+        else:
+            index.write('  <div style="text-align: center;">Plots by channel: \n'
+                    '  <a href="../eee">[eee]</a> - '
+                    '  <a href="../eem">[eem]</a> - '
+                    '  <a href="../emm">[emm]</a> - '
+                    '  <a href="../mmm">[mmm]</a>'
                     '</div>\n'
                     '  <table>\n'
             )

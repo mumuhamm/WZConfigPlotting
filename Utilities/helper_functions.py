@@ -211,6 +211,7 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
                 state_hist = producer.produce(*args)
             except ValueError as error:
                 logging.warning(error)
+                logging.warning("Error for file %s: %s" % (name, error))
                 log_info += "Number of events in %s channel: 0.0\n"  % state
                 continue
             if not hist:
@@ -464,7 +465,7 @@ def getPlotPaths(selection, folder_name, write_log_file=False):
         storage_area = "/nfs_scratch/kdlong"
         html_area = "/afs/hep.wisc.edu/home/kdlong/public_html"
     else:
-        storage_area = "/data/kelong"
+        storage_area = "/eos/user/k/kelong"
         html_area = "/afs/cern.ch/user/k/kelong/www"
     base_dir = "%s/DibosonAnalysisData/PlottingResults" % storage_area
     plot_path = "/".join([base_dir, selection] +

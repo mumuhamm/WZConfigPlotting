@@ -12,8 +12,10 @@ class HistProducer(object):
     def getHistScaleFactor(self):
         if self.weight_info.getCrossSection() == 1:
             return 1
-        return self.weight_info.getCrossSection()*self.lumi/self.weight_info.getSumOfWeights() \
-                        if self.weight_info.getSumOfWeights() > 0 else 0
+        if self.weight_info.getSumOfWeights() <= 0:
+            raise ValueError("Found non-positive sum of weights")
+        return self.weight_info.getCrossSection()*self.lumi/self.weight_info.getSumOfWeights()
+                        
     def getCrossSection(self):
         return self.weight_info.getCrossSection()
     
