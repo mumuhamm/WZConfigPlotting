@@ -19,6 +19,9 @@ class HistProducer(object):
     def getCrossSection(self):
         return self.weight_info.getCrossSection()
     
+    def getSumOfWeights(self):
+        return self.weight_info.getSumOfWeights()
+
     def setLumi(self, lumi, units='pb-1'):
         if units == 'pb-1':
             lumi *= 1000

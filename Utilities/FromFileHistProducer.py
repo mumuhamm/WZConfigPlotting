@@ -20,6 +20,8 @@ class FromFileHistProducer(HistProducer):
             raise ValueError("Hist %s not found in file %s" % (hist_name, self.hist_file))
         if not hist.GetSumw2(): hist.Sumw2()
         hist.Scale(self.getHistScaleFactor())
+        # This causes GetEntries() to return 1 greater than the "actual"
+        # number of entries in the hist
         if overflow:
             # Returns num bins + overflow + underflow
             num_bins = hist.GetSize() - 2

@@ -163,6 +163,12 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, hist_file=
             weight_info = WeightInfo.WeightInfoProducer(metaTree, 
                     mc_info[base_name]['cross_section']*kfac,
                     sum_weights_branch).produce()
+            # At the moment the sum of weights is recalculated for the hist file,
+            # which could lead to inconsistencies if the files have been changed since
+            # the hist file was created. Look into changing this.
+            #else:
+            #    sumweights_hist = hist_file.Get("/".join([directory, "sumweights"]))
+            #    weight_info = WeightInfo.WeightInfo(mc_info[base_name]['cross_section']*kfac,
         else:
             weight_info = WeightInfo.WeightInfo(1, 1)
             weight_branch = ""
@@ -178,7 +184,7 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, hist_file=
     return hist_factory
 def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, 
         uncertainties="none", cut_string="", addOverflow=True):
-    hist_name = "_".join([plot_group, selection.replace("/", "_"), branch_name.split("_")[0]])
+    hist_name = "_".join([plot_group, selection.replace("/", "_"), branch_name])
     rootdir = "gProof" if hasattr(ROOT, "gProof") else "gROOT"
     hist = getattr(ROOT, rootdir).FindObject(hist_name)
     if hist:
@@ -192,13 +198,16 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
         log_info += "Results for file %s in plot group %s\n" % (name, plot_group)
         producer = entry["histProducer"]
         config_factory = entry["configFactory"]
+        weight = config_factory.getPlotGroupWeight(plot_group)
+        if weight != 1:
+            producer.addWeight(weight)
         for state in states:
             if entry["fromFile"]:
                 chan = state
-                hist_name = str("%s/%s_%s" % (name, branch_name, state))
+                state_hist_name = str("%s/%s_%s" % (name, branch_name, state))
                 if "nonprompt" in str(plot_group).lower():
-                    hist_name = hist_name.replace(state, "Fakes_"+state)
-                args = [hist_name, addOverflow]
+                    state_hist_name = state_hist_name.replace(state, "Fakes_"+state)
+                args = [state_hist_name, addOverflow]
             else:
                 chan = state.split("/")[0] if "ntuple" in state else ""
                 config_factory.setProofAliases(chan)
@@ -223,8 +232,10 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
                 hist.Add(state_hist)
             final_counts[state] += state_hist.Integral()
             log_info += "Number of events in %s channel: %0.2f\n" % (state, state_hist.Integral())
+            log_info += "Number of entries is %i\n" % state_hist.GetEntries() 
         log_info += "Total number of events: %0.2f\n" % (hist.Integral() if hist and hist.InheritsFrom("TH1") else 0)
         log_info += "Cross section is %0.2f\n" % producer.getCrossSection()
+        log_info += "Sum of weights is %0.2f\n" % producer.getSumOfWeights() 
     logging.debug(log_info)
     logging.debug("Hist has %i entries" % (hist.GetEntries() if hist and hist.InheritsFrom("TH1") else 0) )
     log_info += "*"*80 + "\n"

@@ -12,7 +12,7 @@ class WeightInfoProducer(object):
     def __init__(self, metaInfoChain, cross_section, sum_weights_branch):
         self.cross_section = cross_section
         self.sum_of_weights = 0
-        hist = ROOT.TH1F("sumweights", "sumweights", 1,0,100)
+        hist = ROOT.TH1D("sumweights", "sumweights", 1,0,100)
         metaInfoChain.Draw("1>>sumweights", sum_weights_branch)
         self.sum_of_weights = hist.Integral()
     def produce(self):

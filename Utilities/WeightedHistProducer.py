@@ -13,7 +13,7 @@ class WeightedHistProducer(HistProducer):
 
     def setWeightBranch(self, weight_branch):
         self.weight_branch = weight_branch
-
+    
     def setCutString(self, cut_string):
         self.cut_string = cut_string
 
