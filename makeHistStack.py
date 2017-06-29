@@ -88,7 +88,7 @@ def getStacked(name, config_factory, selection, filelist, branch_name, channels,
                     no_scalefacs, uncertainties)
         else:
             hist = helper.getConfigHistFromFile(hist_file, config_factory, plot_set, 
-                        selection, branch_name, channels, luminosity)
+                        selection, branch_name, channels, luminosity, addOverflow=addOverflow)
         raw_events = hist.GetEntries() - 1
         hist_stack.Add(hist)
         error = array.array('d', [0])
@@ -143,7 +143,7 @@ def main():
                         branch_name, args.channels, args.blinding, not args.no_overflow, cut_string)
             else:
                 data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_2016", 
-                        args.selection, branch_name, args.channels)
+                        args.selection, branch_name, args.channels,addOverflow=(not args.no_overflow))
             with open("temp.txt", "a") as events_log_file:
                 events_log_file.write("\nNumber of events in data: %i\n" % data_hist.Integral())
         else:

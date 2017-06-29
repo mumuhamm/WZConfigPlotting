@@ -183,7 +183,7 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, hist_file=
         hist_factory[name].update({"fromFile" : hist_file is not None})
     return hist_factory
 def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, 
-        uncertainties="none", cut_string="", addOverflow=True):
+        uncertainties="none", addOverflow=False, cut_string=""):
     hist_name = "_".join([plot_group, selection.replace("/", "_"), branch_name])
     rootdir = "gProof" if hasattr(ROOT, "gProof") else "gROOT"
     hist = getattr(ROOT, rootdir).FindObject(hist_name)
@@ -234,7 +234,7 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
             log_info += "Number of events in %s channel: %0.2f\n" % (state, state_hist.Integral())
             log_info += "Number of entries is %i\n" % state_hist.GetEntries() 
         log_info += "Total number of events: %0.2f\n" % (hist.Integral() if hist and hist.InheritsFrom("TH1") else 0)
-        log_info += "Cross section is %0.2f\n" % producer.getCrossSection()
+        log_info += "Cross section is %0.4f\n" % producer.getCrossSection()
         log_info += "Sum of weights is %0.2f\n" % producer.getSumOfWeights() 
     logging.debug(log_info)
     logging.debug("Hist has %i entries" % (hist.GetEntries() if hist and hist.InheritsFrom("TH1") else 0) )
@@ -248,10 +248,13 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
         log_file.write(log_info)
     if not hist or not hist.InheritsFrom("TH1"):
         raise RuntimeError("Invalid histogram %s for selection %s" % (branch_name, selection))
+    rebin = 0
+    if rebin:
+        hist.Rebin(rebin)
     return hist
 
 def getConfigHistFromFile(filename, config_factory, plot_group, selection, branch_name, channels,
-        luminosity=1, addOverflow=True, uncertainties="none"):
+        luminosity=1, addOverflow=False, uncertainties="none"):
     try:
         filelist = config_factory.getPlotGroupMembers(plot_group)
     except ValueError as e:
@@ -265,13 +268,13 @@ def getConfigHistFromFile(filename, config_factory, plot_group, selection, branc
     hist_factory = getHistFactory(config_factory, selection, filelist, luminosity, hist_file)
     bin_info = config_factory.getHistBinInfo(branch_name)
     states = channels.split(",")
-    hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, uncertainties)
+    hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, uncertainties, addOverflow)
     config_factory.setHistAttributes(hist, branch_name, plot_group)
     
     return hist
 
 def getConfigHistFromTree(config_factory, plot_group, selection, branch_name, channels, blinding=[],
-    addOverflow=True, cut_string="", luminosity=1, no_scalefacs=False, uncertainties="none"):
+    addOverflow=False, cut_string="", luminosity=1, no_scalefacs=False, uncertainties="none"):
     if "Gen" not in selection:
         states = [x.strip() for x in channels.split(",")]
         scale_weight_expr = "scaleWeights/scaleWeights[0]"
@@ -307,7 +310,7 @@ def getConfigHistFromTree(config_factory, plot_group, selection, branch_name, ch
 #        scale_name = hist_name + "_lheWeights"
 #    original_cut_string = cut_string
     
-    hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, trees, uncertainties, cut_string)
+    hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, trees, uncertainties, addOverflow, cut_string)
     config_factory.setHistAttributes(hist, branch_name, plot_group)
     return hist
 

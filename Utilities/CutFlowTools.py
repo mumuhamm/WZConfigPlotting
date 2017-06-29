@@ -25,7 +25,7 @@ class CutFlowEntry(object):
         return self.name
     def getValue(self, plot_group, unc, hist_file, scale_facs=False):
         if hist_file == "":
-            hist = helper.getConfigHist(self.config_factory, 
+            hist = helper.getConfigHistFromTree(self.config_factory, 
                     plot_group, 
                     self.analysis,
                     "l1Pt", 
