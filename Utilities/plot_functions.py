@@ -57,13 +57,15 @@ def loadHist(hist, tree, branch_name, cut_string, max_entries, append=False):
 # Modified from Nick Smith, U-Wisconsin
 # https://gitlab.cern.ch/ncsmith/monoZ/blob/master/plotter/plotting/splitCanvas.py
 def splitCanvas(oldcanvas, ratio_text, ratio_range):
-    stack = filter(lambda p: type(p) is ROOT.THStack and "signal" not in p.GetName(), oldcanvas.GetListOfPrimitives())[0]
+    stacks = filter(lambda p: type(p) is ROOT.THStack and "signal" not in p.GetName(), oldcanvas.GetListOfPrimitives())
     signal_stacks = filter(lambda p: type(p) is ROOT.THStack and "signal" in p.GetName(), oldcanvas.GetListOfPrimitives())
     data_list = filter(lambda p: type(p) is ROOT.TH1D and 'data' in p.GetName().lower(), oldcanvas.GetListOfPrimitives())
     compareData = True
+    stack_hists = [i for s in stacks for i in s.GetHists()]
+    signal_hists = [i for s in signal_stacks for i in s.GetHists()]
     if len(data_list) == 0:
         compareData = False
-    elif len(stack.GetHists()) < 2:
+    elif len(stack_hists) < 2:
         print "Can't form ratio from < 2 histograms"
         return oldcanvas
     name = oldcanvas.GetName()
@@ -82,12 +84,12 @@ def splitCanvas(oldcanvas, ratio_text, ratio_range):
     ratioPad.cd()
     ratioPad.SetBottomMargin(oldBottomMargin/.3)
     ratioPad.SetTopMargin(0.)
-    ratioHists = data_list if compareData else stack.GetHists()[1:]
+    ratioHists = data_list if compareData else (stack_hists+signal_hists)[1:]
     ratioHists = [h.Clone(h.GetName()+"_ratioHist") for h in ratioHists]
-    centralRatioHist = stack.GetHists()[0].Clone(name+'_central_ratioHist')
+    centralRatioHist = stack_hists[0].Clone(name+'_central_ratioHist')
     if compareData:
-        if len(stack.GetHists()) > 1:
-            map(centralRatioHist.Add, stack.GetHists()[1:])
+        if len(stack_hists) > 1:
+            map(centralRatioHist.Add, stack_hists[1:])
     centralRatioHist.SetFillColor(ROOT.TColor.GetColor("#e4e5e5"))
     centralRatioHist.SetMarkerSize(0)
     for ratioHist in ratioHists:
@@ -97,12 +99,11 @@ def splitCanvas(oldcanvas, ratio_text, ratio_range):
     for i in range(centralRatioHist.GetNbinsX()+2):
         centralRatioHist.SetBinError(i, centralRatioHist.GetBinError(i)/max(centralRatioHist.GetBinContent(i), 1))
         centralRatioHist.SetBinContent(i, 1.)
-    stack.GetXaxis().Copy(centralRatioHist.GetXaxis())
-    stack.GetXaxis().Copy(centralRatioHist.GetXaxis())
-    signal_stack = ROOT.gROOT.FindObject("signal_stack")
-    if signal_stack:
-        signal_stack.GetXaxis().Copy(centralRatioHist.GetXaxis())
-        signal_stack.GetXaxis().Copy(centralRatioHist.GetXaxis())
+    stack_hists[0].GetXaxis().Copy(centralRatioHist.GetXaxis())
+    stack_hists[0].GetXaxis().Copy(centralRatioHist.GetXaxis())
+    if len(signal_stacks) > 0:
+        signal_stacks[0].GetXaxis().Copy(centralRatioHist.GetXaxis())
+        signal_stacks[0].GetXaxis().Copy(centralRatioHist.GetXaxis())
     centralRatioHist.GetYaxis().SetTitle(ratio_text)
     centralRatioHist.GetYaxis().CenterTitle()
     centralRatioHist.GetYaxis().SetRangeUser(*ratio_range)

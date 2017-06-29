@@ -123,39 +123,47 @@ def main():
         'Script called at %s\n' % datetime.datetime.now() + \
         'The command was: %s\n' % ' '.join(sys.argv) + \
         '-'*80 + '\n'
-    for branch_name in branches:
-        with open("temp.txt", "w") as mc_file:
-            mc_file.write(meta_info)
-            mc_file.write("Selection: %s" % args.selection)
-            mc_file.write("\nAdditional cut: %s" % ("None" if cut_string == "" else cut_string))
-            mc_file.write("\nLuminosity: %0.2f fb^{-1}" % (args.luminosity))
-            mc_file.write("\nPlotting branch: %s\n" % branch_name)
-        try:
-            hist_stack = getStacked("stack", config_factory, args.selection, filelist, 
-                    branch_name, args.channels, args.blinding, not args.no_overflow, cut_string,
-                    args.luminosity, args.no_scalefactors, args.uncertainties, args.hist_file)
-        except RuntimeError as e:
-            logging.warning('\033[91m'+ str(e)+'\033[0m')
-            continue
-        if not args.no_data:
-            if args.hist_file == "":
-                data_hist = helper.getConfigHistFromTree(config_factory, "data_2016", args.selection, 
-                        branch_name, args.channels, args.blinding, not args.no_overflow, cut_string)
+    for branch in branches:
+        hist_stacks = []
+        signal_stacks = []
+        data_hists = []
+        for branch_name in branch.split("+"):
+            with open("temp.txt", "w") as mc_file:
+                mc_file.write(meta_info)
+                mc_file.write("Selection: %s" % args.selection)
+                mc_file.write("\nAdditional cut: %s" % ("None" if cut_string == "" else cut_string))
+                mc_file.write("\nLuminosity: %0.2f fb^{-1}" % (args.luminosity))
+                mc_file.write("\nPlotting branch: %s\n" % branch_name)
+            try:
+                hist_stack = getStacked("stack_"+branch_name, config_factory, args.selection, filelist, 
+                        branch_name, args.channels, args.blinding, not args.no_overflow, cut_string,
+                        args.luminosity, args.no_scalefactors, args.uncertainties, args.hist_file)
+            except RuntimeError as e:
+                logging.warning('\033[91m'+ str(e)+'\033[0m')
+                continue
+            if not args.no_data:
+                if args.hist_file == "":
+                    data_hist = helper.getConfigHistFromTree(config_factory, "data_2016", args.selection, 
+                            branch_name, args.channels, args.blinding, not args.no_overflow, cut_string)
+                else:
+                    data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_2016", 
+                            args.selection, branch_name, args.channels,addOverflow=(not args.no_overflow))
+                with open("temp.txt", "a") as events_log_file:
+                    events_log_file.write("\nNumber of events in data: %i\n" % data_hist.Integral())
             else:
-                data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_2016", 
-                        args.selection, branch_name, args.channels,addOverflow=(not args.no_overflow))
-            with open("temp.txt", "a") as events_log_file:
-                events_log_file.write("\nNumber of events in data: %i\n" % data_hist.Integral())
-        else:
-            data_hist = 0
-        signal_stack = 0
-        if len(args.signal_files) > 0:
-            signal_filelist = UserInput.getListOfFiles(args.signal_files, args.selection)
-            signal_stack = getStacked("signal_stack", config_factory, args.selection, signal_filelist, 
-                    branch_name, args.channels, args.blinding, not args.no_overflow, cut_string,
-                    args.luminosity, args.no_scalefactors, args.uncertainties, args.hist_file)
-        plot_name = branch_name if args.append_to_name == "" else "_".join([branch_name, args.append_to_name])
-        canvas = helper.makePlot(hist_stack, data_hist, branch_name, args, signal_stack)
+                data_hist = 0
+            signal_stack = 0
+            if len(args.signal_files) > 0:
+                signal_filelist = UserInput.getListOfFiles(args.signal_files, args.selection)
+                signal_stack = getStacked("signal_stack_"+branch_name, config_factory, args.selection, signal_filelist, 
+                        branch_name, args.channels, args.blinding, not args.no_overflow, cut_string,
+                        args.luminosity, args.no_scalefactors, args.uncertainties, args.hist_file)
+            hist_stacks.append(hist_stack)
+            signal_stacks.append(signal_stack)
+            data_hists.append(data_hist)
+        name = branch.replace("+","_")
+        plot_name = name if args.append_to_name == "" else "_".join([name, args.append_to_name])
+        canvas = helper.makePlots(hist_stacks, data_hists, name, args, signal_stacks)
         helper.savePlot(canvas, plot_path, html_path, plot_name, True, args)
         makeSimpleHtml.writeHTML(html_path, args.selection)
 if __name__ == "__main__":

@@ -17,44 +17,29 @@ from IPython import embed
 
 #logging.basicConfig(level=logging.DEBUG)
 
-def makePlot(hist_stack, data_hist, branch_name, args, signal_stack=0):
-    stack_drawexpr = " ".join(["hist"] + 
-        ["nostack" if args.nostack else ""] +
-        ["same" if signal_stack != 0 else ""]
-    )
-    canvas = ROOT.TCanvas("%s_canvas" % branch_name, branch_name, 1600, 1200) 
-    hists = hist_stack.GetHists()
-    if signal_stack != 0:
-        sum_stack = hists[0].Clone()
-        for hist in hists[1:]:
-            sum_stack.Add(hist)
-        for i,hist in enumerate(signal_stack.GetHists()):
-            hist.Add(sum_stack)
-        signal_stack.Draw("hist nostack")
-    hist_stack.Draw(stack_drawexpr)
-    first_stack = hist_stack if signal_stack == 0 else signal_stack
-    if data_hist:
-        data_hist.Draw("e1 same")
-    if not args.no_decorations:
-        ROOT.dotrootImport('kdlong/CMSPlotDecorations')
-        scale_label = "Normalized to Unity" if args.luminosity < 0 else \
-            "%0.1f fb^{-1}" % args.luminosity
-        ROOT.CMSlumi(canvas, 0, 11, "%s (13 TeV)" % scale_label,
-                "Preliminary Simulation" if args.simulation else "Preliminary")
-    first_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
-    first_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
-    first_stack.GetYaxis().SetTitle(
-        hists[0].GetYaxis().GetTitle())
-    first_stack.GetHistogram().GetXaxis().SetTitle(
-        hists[0].GetXaxis().GetTitle())
-    first_stack.GetHistogram().SetLabelSize(0.04)
-    first_stack.SetMinimum(hists[0].GetMinimum()*args.scaleymin)
-    ## Adding an arbirary factor of 100 here so the scaling doesn't cut off info from
-    ## Hists. Not applied when lumi < 1. This should be fixed
-    scale = args.luminosity/100 if args.luminosity > 0 else 1
-    first_stack.SetMaximum(hists[0].GetMaximum()*args.scaleymax*scale)
+def makePlots(hist_stacks, data_hists, name, args, signal_stacks=0):
+    canvas = ROOT.TCanvas("%s_canvas" % name, name, 1600, 1200) 
+    first = True
+    for hist_stack, data_hist, signal_stack in zip(hist_stacks, data_hists, signal_stacks):
+        makePlot(hist_stack, data_hist, name, args, signal_stack, 
+            same=(" same" if not first else ""))
+        first = False
+    
+    offset = ROOT.gPad.GetLeftMargin() - 0.04 if args.legend_left else \
+        ROOT.gPad.GetRightMargin() - 0.04 
+    if hasattr(args, "selection"):
+        width = .2 if "WZxsec" in args.selection else 0.33
+    else: 
+        width = .33
+    xcoords = [.10+offset, .1+width+offset] if args.legend_left \
+        else [.92-width-offset, .92-offset]
+    unique_entries = min(len(hist_stacks[0].GetHists()), 8)
+    ymax = 0.8 if args.legend_left else 0.9
+    ycoords = [ymax, ymax - 0.08*unique_entries*args.scalelegy]
+    coords = [xcoords[0], ycoords[0], xcoords[1], ycoords[1]]
+    
     if "none" not in args.uncertainties:
-        histErrors = getHistErrors(hist_stack, args.nostack)
+        histErrors = getHistErrors(hist_stacks[0], args.nostack)
         for error_hist in histErrors:
             error_hist.Draw("same e2")
             error_title = "Stat. Unc."
@@ -65,18 +50,15 @@ def makePlot(hist_stack, data_hist, branch_name, args, signal_stack=0):
             error_hist.SetTitle(error_title)
     else:
         histErrors = []
-    offset = ROOT.gPad.GetLeftMargin() - 0.04 if args.legend_left else \
-        ROOT.gPad.GetRightMargin() - 0.04 
-    if hasattr(args, "selection"):
-        width = .2 if "WZxsec" in args.selection else 0.33
-    else: 
-        width = .33
-    xcoords = [.10+offset, .1+width+offset] if args.legend_left \
-        else [.92-width-offset, .92-offset]
-    unique_entries = min(len(hists), 8)
-    ymax = 0.8 if args.legend_left else 0.9
-    ycoords = [ymax, ymax - 0.08*unique_entries*args.scalelegy]
-    coords = [xcoords[0], ycoords[0], xcoords[1], ycoords[1]]
+    legend = getPrettyLegend(hist_stacks[0], data_hists[0], signal_stacks[0], histErrors, coords)
+    legend.Draw()
+
+    if not args.no_decorations:
+        ROOT.dotrootImport('kdlong/CMSPlotDecorations')
+        scale_label = "Normalized to Unity" if args.luminosity < 0 else \
+            "%0.1f fb^{-1}" % args.luminosity
+        ROOT.CMSlumi(canvas, 0, 11, "%s (13 TeV)" % scale_label,
+                "Preliminary Simulation" if args.simulation else "Preliminary")
     if args.logy:
         canvas.SetLogy()
     if args.extra_text != "":
@@ -95,14 +77,43 @@ def makePlot(hist_stack, data_hist, branch_name, args, signal_stack=0):
             text_box.AddText(line)
         text_box.Draw()
         ROOT.SetOwnership(text_box, False)
-    legend = getPrettyLegend(hist_stack, data_hist, signal_stack, histErrors, coords)
-    legend.Draw()
     if not args.no_ratio:
         canvas = plotter.splitCanvas(canvas,
-                "Data / SM" if data_hist else args.ratio_text,
+                "Data / SM" if data_hists[0] else args.ratio_text,
                 [float(i) for i in args.ratio_range]
         )
     return canvas
+def makePlot(hist_stack, data_hist, name, args, signal_stack=0, same=""):
+    canvas = ROOT.gROOT.FindObject("%s_canvas" % name)
+    ROOT.SetOwnership(canvas, False)
+    stack_drawexpr = " ".join(["hist"] + 
+        ["nostack" if args.nostack else ""] +
+        ["same" if signal_stack != 0 else ""]
+    )
+    hists = hist_stack.GetHists()
+    if signal_stack != 0:
+        sum_stack = hists[0].Clone()
+        for hist in hists[1:]:
+            sum_stack.Add(hist)
+        for i,hist in enumerate(signal_stack.GetHists()):
+            hist.Add(sum_stack)
+        signal_stack.Draw("hist nostack" + same)
+    hist_stack.Draw(stack_drawexpr + same)
+    first_stack = hist_stack if signal_stack == 0 else signal_stack
+    if data_hist:
+        data_hist.Draw("e1 same" + same)
+    first_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
+    first_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
+    first_stack.GetYaxis().SetTitle(
+        hists[0].GetYaxis().GetTitle())
+    first_stack.GetHistogram().GetXaxis().SetTitle(
+        hists[0].GetXaxis().GetTitle())
+    first_stack.GetHistogram().SetLabelSize(0.04)
+    first_stack.SetMinimum(hists[0].GetMinimum()*args.scaleymin)
+    ## Adding an arbirary factor of 100 here so the scaling doesn't cut off info from
+    ## Hists. Not applied when lumi < 1. This should be fixed
+    scale = args.luminosity/100 if args.luminosity > 0 else 1
+    first_stack.SetMaximum(hists[0].GetMaximum()*args.scaleymax*scale)
 def getHistErrors(hist_stack, separate):
     histErrors = []
     for hist in hist_stack.GetHists():
@@ -261,16 +272,25 @@ def getConfigHistFromFile(filename, config_factory, plot_group, selection, branc
         logging.warning(e.message)
         logging.warning("Treating %s as file name" % plot_group)
         filelist = [plot_group]
-    if branch_name not in config_factory.getListOfPlotObjects():
+    if branch_name.split("_")[0] not in config_factory.getListOfPlotObjects():
         raise ValueError("Invalid histogram %s for selection %s" % (branch_name, selection))
     hist_file = ROOT.TFile(filename)
     ROOT.SetOwnership(hist_file, False)
     hist_factory = getHistFactory(config_factory, selection, filelist, luminosity, hist_file)
-    bin_info = config_factory.getHistBinInfo(branch_name)
-    states = channels.split(",")
-    hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, uncertainties, addOverflow)
-    config_factory.setHistAttributes(hist, branch_name, plot_group)
-    
+    try:
+        bin_info = config_factory.getHistBinInfo(branch_name)
+        states = channels.split(",")
+        hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, uncertainties, addOverflow)
+        config_factory.setHistAttributes(hist, branch_name, plot_group)
+    except Exception as e:
+        bin_info = config_factory.getHistBinInfo(branch_name.split("_")[0])
+        states = channels.split(",")
+        hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, uncertainties, addOverflow)
+        config_factory.setHistAttributes(hist, branch_name.split("_")[0], plot_group)
+    except Exception as e:
+        pass
+    if "Up" in hist.GetName() or "Down" in hist.GetName():
+        hist.SetLineStyle(7)
     return hist
 
 def getConfigHistFromTree(config_factory, plot_group, selection, branch_name, channels, blinding=[],
