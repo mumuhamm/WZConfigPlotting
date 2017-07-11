@@ -59,8 +59,6 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=0):
             "%0.1f fb^{-1}" % args.luminosity
         ROOT.CMSlumi(canvas, 0, 11, "%s (13 TeV)" % scale_label,
                 "Preliminary Simulation" if args.simulation else "Preliminary")
-    if args.logy:
-        canvas.SetLogy()
     if args.extra_text != "":
         lines = [x.strip() for x in args.extra_text.split(";")]
         ymax = coords[3]
@@ -82,6 +80,11 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=0):
                 "Data / SM" if data_hists[0] else args.ratio_text,
                 [float(i) for i in args.ratio_range]
         )
+        if args.logy:
+            canvas.Get("stackPad").SetLogy()
+            canvas.Get("ratioPad").SetLogy(False)
+    elif args.logy:
+        canvas.SetLogy()
     return canvas
 def makePlot(hist_stack, data_hist, name, args, signal_stack=0, same=""):
     canvas = ROOT.gROOT.FindObject("%s_canvas" % name)
@@ -194,7 +197,7 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, hist_file=
         hist_factory[name].update({"fromFile" : hist_file is not None})
     return hist_factory
 def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, 
-        uncertainties="none", addOverflow=False, cut_string=""):
+        uncertainties="none", addOverflow=False, rebin=0, cut_string=""):
     hist_name = "_".join([plot_group, selection.replace("/", "_"), branch_name])
     rootdir = "gProof" if hasattr(ROOT, "gProof") else "gROOT"
     hist = getattr(ROOT, rootdir).FindObject(hist_name)
@@ -216,7 +219,7 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
             if entry["fromFile"]:
                 chan = state
                 state_hist_name = str("%s/%s_%s" % (name, branch_name, state))
-                if "nonprompt" in str(plot_group).lower():
+                if str(plot_group).lower() == "nonprompt":
                     state_hist_name = state_hist_name.replace(state, "Fakes_"+state)
                 args = [state_hist_name, addOverflow]
             else:
@@ -259,42 +262,35 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
         log_file.write(log_info)
     if not hist or not hist.InheritsFrom("TH1"):
         raise RuntimeError("Invalid histogram %s for selection %s" % (branch_name, selection))
-    rebin = 0
     if rebin:
         hist.Rebin(rebin)
     return hist
 
 def getConfigHistFromFile(filename, config_factory, plot_group, selection, branch_name, channels,
-        luminosity=1, addOverflow=False, uncertainties="none"):
+        luminosity=1, addOverflow=False, rebin=0, uncertainties="none"):
     try:
         filelist = config_factory.getPlotGroupMembers(plot_group)
     except ValueError as e:
         logging.warning(e.message)
         logging.warning("Treating %s as file name" % plot_group)
         filelist = [plot_group]
-    if branch_name.split("_")[0] not in config_factory.getListOfPlotObjects():
+    if branch_name not in config_factory.getListOfPlotObjects():
         raise ValueError("Invalid histogram %s for selection %s" % (branch_name, selection))
     hist_file = ROOT.TFile(filename)
     ROOT.SetOwnership(hist_file, False)
     hist_factory = getHistFactory(config_factory, selection, filelist, luminosity, hist_file)
-    try:
-        bin_info = config_factory.getHistBinInfo(branch_name)
-        states = channels.split(",")
-        hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, uncertainties, addOverflow)
-        config_factory.setHistAttributes(hist, branch_name, plot_group)
-    except Exception as e:
-        bin_info = config_factory.getHistBinInfo(branch_name.split("_")[0])
-        states = channels.split(",")
-        hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, uncertainties, addOverflow)
-        config_factory.setHistAttributes(hist, branch_name.split("_")[0], plot_group)
-    except Exception as e:
-        pass
+
+    bin_info = config_factory.getHistBinInfo(branch_name)
+    states = channels.split(",")
+    hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, uncertainties, addOverflow, rebin)
+    config_factory.setHistAttributes(hist, branch_name, plot_group)
+
     if "Up" in hist.GetName() or "Down" in hist.GetName():
         hist.SetLineStyle(7)
     return hist
 
 def getConfigHistFromTree(config_factory, plot_group, selection, branch_name, channels, blinding=[],
-    addOverflow=False, cut_string="", luminosity=1, no_scalefacs=False, uncertainties="none"):
+    addOverflow=False, cut_string="", luminosity=1, rebin=0, no_scalefacs=False, uncertainties="none"):
     if "Gen" not in selection:
         states = [x.strip() for x in channels.split(",")]
         scale_weight_expr = "scaleWeights/scaleWeights[0]"
@@ -330,7 +326,7 @@ def getConfigHistFromTree(config_factory, plot_group, selection, branch_name, ch
 #        scale_name = hist_name + "_lheWeights"
 #    original_cut_string = cut_string
     
-    hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, trees, uncertainties, addOverflow, cut_string)
+    hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, trees, uncertainties, addOverflow, rebin, cut_string)
     config_factory.setHistAttributes(hist, branch_name, plot_group)
     return hist
 
