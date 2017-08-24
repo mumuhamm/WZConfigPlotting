@@ -65,8 +65,9 @@ if len(args.signal_files) > 0:
         args.uncertainties, not args.no_scalefactors, args.hist_file)
 hist_stack.Draw()
 hist_stack.GetXaxis().SetLabelSize(0.4*8/9)
-canvas = helper.makePlot(hist_stack, data_hist, "YeildByChan", args, signal_stack)
+canvas = helper.makePlots([hist_stack], [data_hist], "YeildByChan", args, [signal_stack])
 canvas.SetRightMargin(0.3)
+print canvas
 
 plot_name = 'yieldByChannel'
 if args.append_to_name != "":

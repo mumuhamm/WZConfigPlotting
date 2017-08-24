@@ -24,7 +24,6 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=0):
         makePlot(hist_stack, data_hist, name, args, signal_stack, 
             same=(" same" if not first else ""))
         first = False
-    
     offset = ROOT.gPad.GetLeftMargin() - 0.04 if args.legend_left else \
         ROOT.gPad.GetRightMargin() - 0.04 
     if hasattr(args, "selection"):
@@ -75,16 +74,14 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=0):
             text_box.AddText(line)
         text_box.Draw()
         ROOT.SetOwnership(text_box, False)
+    if args.logy:
+        canvas.SetLogy()
     if not args.no_ratio:
+        print args.ratio_text
         canvas = plotter.splitCanvas(canvas,
                 "Data / SM" if data_hists[0] else args.ratio_text,
                 [float(i) for i in args.ratio_range]
         )
-        if args.logy:
-            canvas.Get("stackPad").SetLogy()
-            canvas.Get("ratioPad").SetLogy(False)
-    elif args.logy:
-        canvas.SetLogy()
     return canvas
 def makePlot(hist_stack, data_hist, name, args, signal_stack=0, same=""):
     canvas = ROOT.gROOT.FindObject("%s_canvas" % name)
@@ -174,15 +171,20 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, hist_file=
             metaTree = ROOT.TChain(metaTree_name)
             metaTree.Add(hist_factory[name]["file_path"])
             kfac = 1. if 'kfactor' not in mc_info[base_name].keys() else mc_info[base_name]['kfactor']
-            weight_info = WeightInfo.WeightInfoProducer(metaTree, 
-                    mc_info[base_name]['cross_section']*kfac,
-                    sum_weights_branch).produce()
-            # At the moment the sum of weights is recalculated for the hist file,
-            # which could lead to inconsistencies if the files have been changed since
-            # the hist file was created. Look into changing this.
-            #else:
-            #    sumweights_hist = hist_file.Get("/".join([directory, "sumweights"]))
-            #    weight_info = WeightInfo.WeightInfo(mc_info[base_name]['cross_section']*kfac,
+            if not hist_file:
+                weight_info = WeightInfo.WeightInfoProducer(metaTree, 
+                        mc_info[base_name]['cross_section']*kfac,
+                        sum_weights_branch).produce()
+            else:
+                # Not the most elegant way to go about it, but better to read
+                # sum_of_weights from the histogram created by the anlysis code than to recalculate
+                # it from the metadata just in case the file paths have changed
+                sumweights_hist = hist_file.Get(str("/".join([base_name, "sumweights"])))
+                ROOT.SetOwnership(sumweights_hist, False)
+                weight_info = WeightInfo.WeightInfo(
+                        mc_info[base_name]['cross_section']*kfac,
+                        sumweights_hist.Integral() if sumweights_hist else 0
+                )
         else:
             weight_info = WeightInfo.WeightInfo(1, 1)
             weight_branch = ""
@@ -261,7 +263,7 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
     with open("temp-verbose.txt", "a") as log_file:
         log_file.write(log_info)
     if not hist or not hist.InheritsFrom("TH1"):
-        raise RuntimeError("Invalid histogram %s for selection %s" % (branch_name, selection))
+        raise ValueError("Invalid histogram %s for selection %s" % (branch_name, selection))
     if rebin:
         hist.Rebin(rebin)
     return hist

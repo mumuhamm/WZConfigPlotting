@@ -45,7 +45,7 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
     signal = 0
     signal_err = 0
     for plot_set, entry in hist_info.iteritems():
-        mc_info.add_row([plot_set, round(entry["weighted_events"], 2), 
+        mc_info.add_row([plot_set, round(entry["weighted_events"], 3), 
             round(entry["error"],2),
             round(entry["stat error"],2),
             entry["raw_events"]])
@@ -140,7 +140,7 @@ def main():
                 hist_stack = getStacked("stack_"+branch_name, config_factory, args.selection, filelist, 
                         branch_name, args.channels, args.blinding, not args.no_overflow, cut_string,
                         args.luminosity, args.rebin, args.no_scalefactors, args.uncertainties, args.hist_file)
-            except RuntimeError as e:
+            except ValueError as e:
                 logging.warning('\033[91m'+ str(e)+'\033[0m')
                 continue
             if not args.no_data:
@@ -163,10 +163,14 @@ def main():
             hist_stacks.append(hist_stack)
             signal_stacks.append(signal_stack)
             data_hists.append(data_hist)
+        if not hist_stacks:
+            continue
         name = branch.replace("+","_")
         plot_name = name if args.append_to_name == "" else "_".join([name, args.append_to_name])
+
         canvas = helper.makePlots(hist_stacks, data_hists, name, args, signal_stacks)
         helper.savePlot(canvas, plot_path, html_path, plot_name, True, args)
         makeSimpleHtml.writeHTML(html_path, args.selection)
+
 if __name__ == "__main__":
     main()
