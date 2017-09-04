@@ -20,6 +20,7 @@ def getComLineArgs():
     parser = UserInput.getDefaultParser()
     parser.add_argument("-s", "--selection", type=str, required=True,
                         help="Specificy selection level to run over")
+    parser.add_argument("--latex", action='store_true', help='table in latex format')
     parser.add_argument("--rebin", type=int, default=0,
                         help="Rebin (integer)")
     parser.add_argument("-r", "--object_restrict", type=str, default="",
@@ -36,7 +37,7 @@ def getComLineArgs():
 
 log_info = ""
 
-def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
+def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string, latex):
     mc_info = PrettyTable(["Plot Group", "Weighted Events", "Error", "Stat Error", "Raw Events"])
     weighted_events = 0
     total_background = 0
@@ -48,7 +49,8 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
         mc_info.add_row([plot_set, round(entry["weighted_events"], 3), 
             round(entry["error"],2),
             round(entry["stat error"],2),
-            entry["raw_events"]])
+            round(entry["raw_events"], 1)]
+        )
         weighted_events += entry["weighted_events"]
         total_err2 += entry["error"]**2
         if "wz" not in plot_set:
@@ -69,7 +71,7 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
     if weighted_events == 0:
         raise RuntimeError("Empty histogram produced for variable " + branch_name)
     with open("temp.txt", "a") as mc_file:
-        mc_file.write("\n"+mc_info.get_string())
+        mc_file.write("\n"+(mc_info.get_string() if not latex else mc_info.get_latex_string())+"\n")
         mc_file.write("\nTotal sum of Monte Carlo: %0.2f +/- %0.2f" % (round(weighted_events, 2), 
             round(math.sqrt(sum([x["error"]*x["error"] for x in hist_info.values()])), 2)))
         mc_file.write("\nTotal sum of background Monte Carlo: %0.2f +/- %0.2f" % (round(total_background, 2), 
@@ -78,7 +80,7 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string):
             round(sigbkgd_err, 2)))
         mc_file.write("\nRatio S/sqrt(S+B): %0.2f +/- %0.2f" % (round(likelihood, 2), 
             round(likelihood_err, 2)))
-def getStacked(name, config_factory, selection, filelist, branch_name, channels, blinding, addOverflow,
+def getStacked(name, config_factory, selection, filelist, branch_name, channels, blinding, addOverflow, latex,
                cut_string="", luminosity=1, rebin=0, no_scalefacs=False, uncertainties="none", hist_file=""):
     hist_stack = ROOT.THStack(name, "")
     ROOT.SetOwnership(hist_stack, False)
@@ -102,7 +104,7 @@ def getStacked(name, config_factory, selection, filelist, branch_name, channels,
                                 'stat error' : 0 if raw_events <= 0 else \
                                     weighted_events/math.sqrt(raw_events) 
         }
-    writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string)
+    writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string, latex)
     return hist_stack
 def main():
     args = getComLineArgs()
@@ -138,7 +140,7 @@ def main():
                 mc_file.write("\nPlotting branch: %s\n" % branch_name)
             try:
                 hist_stack = getStacked("stack_"+branch_name, config_factory, args.selection, filelist, 
-                        branch_name, args.channels, args.blinding, not args.no_overflow, cut_string,
+                        branch_name, args.channels, args.blinding, not args.no_overflow, args.latex, cut_string,
                         args.luminosity, args.rebin, args.no_scalefactors, args.uncertainties, args.hist_file)
             except ValueError as e:
                 logging.warning('\033[91m'+ str(e)+'\033[0m')
