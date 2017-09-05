@@ -179,7 +179,7 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, hist_file=
                 # Not the most elegant way to go about it, but better to read
                 # sum_of_weights from the histogram created by the anlysis code than to recalculate
                 # it from the metadata just in case the file paths have changed
-                sumweights_hist = hist_file.Get(str("/".join([base_name, "sumweights"])))
+                sumweights_hist = hist_file.Get(str("/".join([name, "sumweights"])))
                 ROOT.SetOwnership(sumweights_hist, False)
                 weight_info = WeightInfo.WeightInfo(
                         mc_info[base_name]['cross_section']*kfac,
