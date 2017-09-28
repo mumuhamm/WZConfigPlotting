@@ -357,11 +357,19 @@ class PrettyTable:
 
     def get_latex_string(self, start=0, end=None, fields=None, header=True, border=True, hrules=FRAME, sortby=None, reversesort=False):
         self.set_border_chars("&", "", "")
-        latex_string = "\\begin{tabular}{ %s } \n\hline" % "|".join(["l" for i in self.fields])
+        latex_string = "\\begin{table}\n"
+        latex_string += "  \\centering\n"
+        latex_string += "  \\begin{tabular}{| %s |} \n" % "|".join(["c" for i in self.fields])
         for line in self.get_string(start, end, fields, header, border, hrules, sortby, reversesort).splitlines():
+            if line == "":
+                latex_string += "    \\hline\n"
+                continue
             latex_line = line.replace("& ", "", 1)
-            latex_string += latex_line[::-1].replace("&",r"\\",1)[::-1] + "\n"
-        latex_string += "\\hline\n\\end{tabular}"
+            latex_string += "    " + latex_line[::-1].replace("&",r"\\",1)[::-1] + "\n"
+        latex_string += "    \\hline\n"
+        latex_string += "  \\end{tabular}\n"
+        latex_string += "  \\caption{Event yields for selection}\n"
+        latex_string += "\\end{table}\n"
         return latex_string 
 
     def _stringify_hrule(self, fields=None, border=True):

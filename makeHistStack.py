@@ -46,10 +46,11 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string, la
     signal = 0
     signal_err = 0
     for plot_set, entry in hist_info.iteritems():
-        mc_info.add_row([plot_set, round(entry["weighted_events"], 3), 
+        wevents = round(entry["weighted_events"], 3 if entry["weighted_events"] < 1 else 2) 
+        mc_info.add_row([plot_set, wevents, 
             round(entry["error"],2),
             round(entry["stat error"],2),
-            round(entry["raw_events"], 1)]
+            int(round(entry["raw_events"]))]
         )
         weighted_events += entry["weighted_events"]
         total_err2 += entry["error"]**2
@@ -160,7 +161,7 @@ def main():
             if len(args.signal_files) > 0:
                 signal_filelist = UserInput.getListOfFiles(args.signal_files, args.selection)
                 signal_stack = getStacked("signal_stack_"+branch_name, config_factory, args.selection, signal_filelist, 
-                        branch_name, args.channels, args.blinding, not args.no_overflow, cut_string,
+                        branch_name, args.channels, args.blinding, not args.no_overflow, args.latex, cut_string,
                         args.luminosity, args.rebin, args.no_scalefactors, args.uncertainties, args.hist_file)
             hist_stacks.append(hist_stack)
             signal_stacks.append(signal_stack)

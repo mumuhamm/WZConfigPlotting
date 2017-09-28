@@ -77,7 +77,6 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=0):
     if args.logy:
         canvas.SetLogy()
     if not args.no_ratio:
-        print args.ratio_text
         canvas = plotter.splitCanvas(canvas,
                 "Data / SM" if data_hists[0] else args.ratio_text,
                 [float(i) for i in args.ratio_range]
@@ -86,22 +85,27 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=0):
 def makePlot(hist_stack, data_hist, name, args, signal_stack=0, same=""):
     canvas = ROOT.gROOT.FindObject("%s_canvas" % name)
     ROOT.SetOwnership(canvas, False)
+    stack_signal = signal_stack != 0 and args.stack_signal
     stack_drawexpr = " ".join(["hist"] + 
         ["nostack" if args.nostack else ""] +
-        ["same" if signal_stack != 0 else ""]
+        ["same" if stack_signal else ""]
     )
     hists = hist_stack.GetHists()
-    if signal_stack != 0:
+    if stack_signal:
         sum_stack = hists[0].Clone()
         for hist in hists[1:]:
             sum_stack.Add(hist)
         for i,hist in enumerate(signal_stack.GetHists()):
             hist.Add(sum_stack)
         signal_stack.Draw("hist nostack" + same)
-    hist_stack.Draw(stack_drawexpr + same)
-    first_stack = hist_stack if signal_stack == 0 else signal_stack
+    hist_stack.Draw(stack_drawexpr + (same if "same" not in stack_drawexpr else ""))
+    if signal_stack != 0 and not args.stack_signal:
+        signal_stack.Draw("hist nostack same")
+        signal_stack.GetHistogram().GetXaxis().SetTitle(
+            hists[0].GetXaxis().GetTitle())
+    first_stack = signal_stack if stack_signal else hist_stack
     if data_hist:
-        data_hist.Draw("e1 same" + same)
+        data_hist.Draw("e1 same")
     first_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
     first_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
     first_stack.GetYaxis().SetTitle(
@@ -526,6 +530,7 @@ def getGenChannelCut(channel):
         cut_string = "(abs(l1pdgId) == 13 && abs(l2pdgId) == 13 && abs(l3pdgId) == 13)"
     return cut_string
 def savePlot(canvas, plot_path, html_path, branch_name, write_log_file, args):
+    canvas.Update()
     if args.output_file != "":
         canvas.Print(args.output_file)
         return
