@@ -82,15 +82,15 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string, la
         mc_file.write("\nRatio S/sqrt(S+B): %0.2f +/- %0.2f" % (round(likelihood, 2), 
             round(likelihood_err, 2)))
 def getStacked(name, config_factory, selection, filelist, branch_name, channels, blinding, addOverflow, latex,
-               cut_string="", luminosity=1, rebin=0, no_scalefacs=False, uncertainties="none", hist_file=""):
+               cut_string="", luminosity=1, rebin=0, uncertainties="none", hist_file=""):
     hist_stack = ROOT.THStack(name, "")
     ROOT.SetOwnership(hist_stack, False)
     hist_info = {}
     for plot_set in filelist:
         if hist_file == "":
             hist = helper.getConfigHistFromTree(config_factory, plot_set, selection,  
-                    branch_name, channels, blinding, addOverflow, cut_string, luminosity,
-                    rebin, no_scalefacs, uncertainties)
+                    branch_name, channels, blinding, luminosity, addOverflow, rebin, cut_string, 
+                    uncertainties)
         else:
             hist = helper.getConfigHistFromFile(hist_file, config_factory, plot_set, 
                         selection, branch_name, channels, luminosity, addOverflow=addOverflow, rebin=rebin)
@@ -142,14 +142,15 @@ def main():
             try:
                 hist_stack = getStacked("stack_"+branch_name, config_factory, args.selection, filelist, 
                         branch_name, args.channels, args.blinding, not args.no_overflow, args.latex, cut_string,
-                        args.luminosity, args.rebin, args.no_scalefactors, args.uncertainties, args.hist_file)
+                        args.luminosity, args.rebin, args.uncertainties, args.hist_file)
             except ValueError as e:
                 logging.warning('\033[91m'+ str(e)+'\033[0m')
                 continue
             if not args.no_data:
                 if args.hist_file == "":
                     data_hist = helper.getConfigHistFromTree(config_factory, "data_2016", args.selection, 
-                            branch_name, args.channels, args.blinding, not args.no_overflow, args.rebin, cut_string)
+                            branch_name, args.channels, args.blinding, 1, not args.no_overflow, args.rebin, 
+                            cut_string)
                 else:
                     data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_2016", 
                             args.selection, branch_name, args.channels,addOverflow=(not args.no_overflow), rebin=args.rebin)
@@ -162,7 +163,7 @@ def main():
                 signal_filelist = UserInput.getListOfFiles(args.signal_files, args.selection)
                 signal_stack = getStacked("signal_stack_"+branch_name, config_factory, args.selection, signal_filelist, 
                         branch_name, args.channels, args.blinding, not args.no_overflow, args.latex, cut_string,
-                        args.luminosity, args.rebin, args.no_scalefactors, args.uncertainties, args.hist_file)
+                        args.luminosity, args.rebin, args.uncertainties, args.hist_file)
             hist_stacks.append(hist_stack)
             signal_stacks.append(signal_stack)
             data_hists.append(data_hist)

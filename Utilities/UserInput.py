@@ -89,12 +89,12 @@ def getListOfFiles(file_set, selection):
         if "nonprompt" in file_set:
             filelist.append("nonprompt")
         else:
-            if "dyjets" in file_set:
-                drellyan = "dyjets"
+            if "dyjets-nlo" in file_set:
+                drellyan = "dyjets_nlo"
             elif "dylo" in file_set:
                 drellyan = "dy-lo"
             else:
-                drellyan = "dyjets_nlo"
+                drellyan = "dyjets"
             filelist = [drellyan]
             filelist.append("top-nonprompt")
         filelist.append("top-ewk")

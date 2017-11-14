@@ -296,7 +296,7 @@ def getConfigHistFromFile(filename, config_factory, plot_group, selection, branc
     return hist
 
 def getConfigHistFromTree(config_factory, plot_group, selection, branch_name, channels, blinding=[],
-    addOverflow=False, cut_string="", luminosity=1, rebin=0, no_scalefacs=False, uncertainties="none"):
+    luminosity=1, addOverflow=False, rebin=0, cut_string="", uncertainties="none"):
     if "Gen" not in selection:
         states = [x.strip() for x in channels.split(",")]
         scale_weight_expr = "scaleWeights/scaleWeights[0]"
@@ -318,10 +318,10 @@ def getConfigHistFromTree(config_factory, plot_group, selection, branch_name, ch
     hist_factory = getHistFactory(config_factory, selection, filelist, luminosity)
     bin_info = config_factory.getHistBinInfo(branch_name)
     
-    if "data" in plot_group: 
-        for blind in blinding: 
-            if branch_name in blind:
-                cut_string = appendCut(cut_string, blind)
+    #if "data" in plot_group: 
+    #    for blind in blinding: 
+    #        if branch_name in blind:
+    #            cut_string = appendCut(cut_string, blind)
 #    scale_unc = False
 #    scalebins = [8,0,8]
 #    group_sum_hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])

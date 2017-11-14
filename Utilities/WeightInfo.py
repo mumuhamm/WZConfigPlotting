@@ -17,7 +17,5 @@ class WeightInfoProducer(object):
         hist = ROOT.TH1D("sumweights", "sumweights", 1,0,100)
         metaInfoChain.Draw("1>>sumweights", sum_weights_branch)
         self.sum_of_weights = hist.Integral()
-        print "SUM OF WEIGHTS IS", hist.Integral()
-        print "    ", hist.Integral()
     def produce(self):
         return WeightInfo(self.cross_section, self.sum_of_weights)
