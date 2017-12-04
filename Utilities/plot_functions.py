@@ -56,21 +56,20 @@ def loadHist(hist, tree, branch_name, cut_string, max_entries, append=False):
     return num
 # Modified from Nick Smith, U-Wisconsin
 # https://gitlab.cern.ch/ncsmith/monoZ/blob/master/plotter/plotting/splitCanvas.py
-def splitCanvas(oldcanvas, ratio_text, ratio_range):
+def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
     stacks = filter(lambda p: type(p) is ROOT.THStack and "signal" not in p.GetName(), oldcanvas.GetListOfPrimitives())
     signal_stacks = filter(lambda p: type(p) is ROOT.THStack and "signal" in p.GetName(), oldcanvas.GetListOfPrimitives())
     data_list = filter(lambda p: type(p) is ROOT.TH1D and 'data' in p.GetName().lower(), oldcanvas.GetListOfPrimitives())
     compareData = True
     stack_hists = [i for s in stacks for i in s.GetHists()]
     signal_hists = [i for s in signal_stacks for i in s.GetHists()]
-    print data_list
     if len(data_list) == 0:
         compareData = False
     elif len(stack_hists) < 2:
         print "Can't form ratio from < 2 histograms"
         return oldcanvas
     name = oldcanvas.GetName()
-    canvas = ROOT.TCanvas(name+'__new', name)
+    canvas = ROOT.TCanvas(name+'__new', name, *dimensions)
     ratioPad = ROOT.TPad('ratioPad', 'ratioPad', 0., 0., 1., .3)
     ratioPad.Draw()
     stackPad = ROOT.TPad('stackPad', 'stackPad', 0., 0.3, 1., 1.)

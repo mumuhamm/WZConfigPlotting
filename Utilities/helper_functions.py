@@ -18,7 +18,8 @@ from IPython import embed
 #logging.basicConfig(level=logging.DEBUG)
 
 def makePlots(hist_stacks, data_hists, name, args, signal_stacks=0):
-    canvas = ROOT.TCanvas("%s_canvas" % name, name, 1600, 1200) 
+    canvas_dimensions = [1600, 1200] if "unrolled" not in name else [1600, 800]
+    canvas = ROOT.TCanvas("%s_canvas" % name, name, *canvas_dimensions) 
     first = True
     for hist_stack, data_hist, signal_stack in zip(hist_stacks, data_hists, signal_stacks):
         makePlot(hist_stack, data_hist, name, args, signal_stack, 
@@ -77,7 +78,7 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=0):
     if args.logy:
         canvas.SetLogy()
     if not args.no_ratio:
-        canvas = plotter.splitCanvas(canvas,
+        canvas = plotter.splitCanvas(canvas, canvas_dimensions,
                 "Data / SM" if data_hists[0] else args.ratio_text,
                 [float(i) for i in args.ratio_range]
         )
@@ -104,9 +105,7 @@ def makePlot(hist_stack, data_hist, name, args, signal_stack=0, same=""):
         signal_stack.GetHistogram().GetXaxis().SetTitle(
             hists[0].GetXaxis().GetTitle())
     first_stack = signal_stack if stack_signal else hist_stack
-    print data_hist
     if data_hist:
-        print "Drawing"
         data_hist.Draw("e1 same")
     first_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
     first_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
