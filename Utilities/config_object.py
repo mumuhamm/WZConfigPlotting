@@ -74,6 +74,12 @@ class ConfigObject:
                         root_val = self.deepGetattr(ROOT, expr)
                     param = root_val
                 parsed_params.append(param)
+            # If a list of lists of parameters are given, make multiple
+            # Calls to the same function with different arguments
+            if type(parsed_params) is list and type(parsed_params[0]) is list:
+                for params in parsed_params:
+                    self.deepGetattr(tObject, function_call)(*params)
+                continue
             self.deepGetattr(tObject, function_call)(*parsed_params)
     def getHistCanvas(self, hist_name):
         canvas = getCanvas(self)

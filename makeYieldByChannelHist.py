@@ -76,16 +76,18 @@ cutflow_maker.setLuminosity(args.luminosity)
 
 cutflow_entry = CutFlowTools.CutFlowEntry("Total",
     dataset_manager,
-    args.selection,
+    args.selection.split("_")[0],
 )
 cutflow_entry.addAdditionalCut(args.make_cut)
 cutflow_entry.setStates(args.channels)
 cutflow_maker.addEntry(cutflow_entry)
 channels = list(reversed(sorted(args.channels.split(","))))
+
+channel_names = {"eee" : "eee", "eem" : "ee#mu", "emm" : "#mu#mue", "mmm" : "#mu#mu#mu"}
 for chan in channels:
-    cutflow_entry = CutFlowTools.CutFlowEntry(chan, 
+    cutflow_entry = CutFlowTools.CutFlowEntry(channel_names[chan], 
         dataset_manager,
-        args.selection,
+        args.selection.split("_")[0],
     )
     cutflow_entry.addAdditionalCut(args.make_cut)
     cutflow_entry.setStates(chan)
@@ -103,10 +105,11 @@ if len(args.signal_files) > 0:
     signal_stack = getMonteCarloStack("signal_stack", cutflow_maker, signal_filelist, 
         args.uncertainties, not args.no_scalefactors, args.hist_file)
 hist_stack.Draw()
-hist_stack.GetXaxis().SetLabelSize(0.4*8/9)
 canvas = helper.makePlots([hist_stack], [data_hist], "YieldByChan", args, [signal_stack])
 canvas.SetRightMargin(0.3)
-
+ratioPad = ROOT.gPad.GetListOfPrimitives().FindObject("ratioPad")
+hist = ratioPad.GetListOfPrimitives().FindObject('YieldByChan_canvas_central_ratioHist')
+hist.GetXaxis().SetLabelSize(0.2)
 makeLogFile(channels, hist_stack, data_hist, signal_stack)
 
 plot_name = 'yieldByChannel'

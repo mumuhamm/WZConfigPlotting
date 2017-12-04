@@ -64,7 +64,7 @@ class CutFlowHistMaker(object):
         self.states = []
         self.luminosity = 0
         self.config_factory = ConfigHistFactory(dataset_manager,
-            analysis,
+            analysis.split("_")[0],
         )
     def setLuminosity(self, lumi):
         self.luminosity = lumi

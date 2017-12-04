@@ -63,6 +63,7 @@ def splitCanvas(oldcanvas, ratio_text, ratio_range):
     compareData = True
     stack_hists = [i for s in stacks for i in s.GetHists()]
     signal_hists = [i for s in signal_stacks for i in s.GetHists()]
+    print data_list
     if len(data_list) == 0:
         compareData = False
     elif len(stack_hists) < 2:
