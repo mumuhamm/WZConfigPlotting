@@ -20,10 +20,18 @@ def getMonteCarloStack(name, cutflow_maker, filelist, unc, scale_facs, hist_file
         hist_stack.Add(hist)
     return hist_stack
 
-def getFormatedYieldAndError(hist, bin_num, digits):
-    error = round(hist.GetBinError(bin_num), digits)
-    weighted_events = round(hist.GetBinContent(bin_num), digits)
-    return "%0.2f $\pm$ %0.2f" % (weighted_events, error)
+def getFormattedYieldAndError(hist, bin_num, sigfigs):
+    format_string = "%.{sigfigs}g".format(sigfigs=sigfigs)
+    result = format_string % hist.GetBinContent(bin_num)
+
+    error_digits = 0
+    error_string = " $\pm$ %i"
+    if len(result.split(".")) == 2:
+        error_digits = len(result.split(".")[1])
+        error_string = " $\pm$ %.{digits}f".format(digits=error_digits)
+    error = round(hist.GetBinError(bin_num), error_digits)
+
+    return result + (error_string % error)
 
 def makeLogFile(channels, hist_stack, data_hist, signal_stack):
     with open("temp.txt", "w") as log_file:
@@ -35,23 +43,45 @@ def makeLogFile(channels, hist_stack, data_hist, signal_stack):
         log_file.write("Selection: %s" % args.selection)
         log_file.write("\nLuminosity: %0.2f fb^{-1}\n" % (args.luminosity))
         log_file.write('-'*80 + '\n')
-    columns = ["Process", "Total Yield"] + \
-                    ['$'+c.replace("m","\mu")+'$' for c in channels]
+    columns = ["Process", "Total Yield"] + ["\\"+c for c in channels]
     yield_table = PrettyTable(columns)
     yield_info = OrderedDict()
     hists = hist_stack.GetHists() 
+
+    formatted_names = { "wz-powheg" : "WZ (POWHEG)",
+        "wz-mgmlm" : "WZ (MG MLM)",
+        "wzjj-ewk" : "WZjj EWK",
+        "wzjj-vbfnlo" : "WZjj EWK (VBFNLO)",
+        "nonprompt" : "Nonprompt",
+        "top-ewk" : "t+V/VVV",
+        "zg" : "Z$\gamma$",
+        "vv-powheg" : "VV (POWHEG)",
+        "vv" : "VV (MG5_AMC)",
+        "predyield" : "Predicted Yield",
+        "data_2016" : "Data",
+    }
+
+    signal_names = []
     if signal_stack:
         hists += signal_stack.GetHists()
+        signal_names = [h.GetName() for h in signal_stack.GetHists()]
+    hist_allbackground = ROOT.TH1D("predyield", "all background", 
+                            1+len(channels), 0, 1+len(channels))
+    hists.append(hist_allbackground)
     if data_hist:
         hists.Add(data_hist)
+    
+    sigfigs = max(len(str(int(data_hist.GetBinContent(1)))), 3)
     for hist in hists:
-        yield_info["Total Yield"] = getFormatedYieldAndError(hist, 1, 2)
+        yield_info["Total Yield"] = getFormattedYieldAndError(hist, 1, sigfigs)
+        if hist.GetName() not in signal_names and "data" not in hist.GetName():
+            hist_allbackground.Add(hist)
         for i, chan in enumerate(channels):
             # Channels should be ordered the same way as passed to the histogram
             # This bin 0 is the underflow, bin 1 is total, and bin 2
             # is the first bin with channel content (mmm/emm/eem/eee by default)
-            yield_info[chan] = getFormatedYieldAndError(hist, i+2, 2)
-        yield_table.add_row([hist.GetName()] + yield_info.values())
+            yield_info[chan] = getFormattedYieldAndError(hist, i+2, sigfigs)
+        yield_table.add_row([formatted_names[hist.GetName()]] + yield_info.values())
     with open("temp.txt", "a") as log_file:
         log_file.write(yield_table.get_latex_string())
 

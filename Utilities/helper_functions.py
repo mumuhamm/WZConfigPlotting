@@ -18,7 +18,7 @@ from IPython import embed
 #logging.basicConfig(level=logging.DEBUG)
 
 def makePlots(hist_stacks, data_hists, name, args, signal_stacks=0):
-    canvas_dimensions = [1600, 1200] if "unrolled" not in name else [1600, 800]
+    canvas_dimensions = [800, 800] if "unrolled" not in name else [1200, 800]
     canvas = ROOT.TCanvas("%s_canvas" % name, name, *canvas_dimensions) 
     first = True
     for hist_stack, data_hist, signal_stack in zip(hist_stacks, data_hists, signal_stacks):
@@ -166,17 +166,20 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, hist_file=
     all_files = config_factory.getFileInfo()
     hist_factory = OrderedDict() 
     for name in filelist:
+        base_name = name.split("__")[0]
         if name not in all_files.keys():
-            logging.warning("%s is not a valid file name (must match a definition in FileInfo/%s.json)" % \
-                (name, selection))
-            continue
-        hist_factory[name] = dict(all_files[name])
+            if not hist_file is None and not hist_file.Get(name):
+                logging.warning("%s is not a valid file name (must match a definition in FileInfo/%s.json)" % \
+                    (name, selection))
+                continue
+            hist_factory[name] = dict(all_files[base_name])
+        else:
+            hist_factory[name] = dict(all_files[name])
         if "data" not in name.lower() and name != "nonprompt":
-            base_name = name.split("__")[0]
-            metaTree = ROOT.TChain(metaTree_name)
-            metaTree.Add(hist_factory[name]["file_path"])
             kfac = 1. if 'kfactor' not in mc_info[base_name].keys() else mc_info[base_name]['kfactor']
             if not hist_file:
+                metaTree = ROOT.TChain(metaTree_name)
+                metaTree.Add(hist_factory[name]["file_path"])
                 weight_info = WeightInfo.WeightInfoProducer(metaTree, 
                         mc_info[base_name]['cross_section']*kfac,
                         sum_weights_branch).produce()
@@ -185,6 +188,9 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, hist_file=
                 # sum_of_weights from the histogram created by the anlysis code than to recalculate
                 # it from the metadata just in case the file paths have changed
                 sumweights_hist = hist_file.Get(str("/".join([name, "sumweights"])))
+                if not sumweights_hist:
+                    logging.warning("Using sumWeights from %s for file %s" % (base_name, name))
+                    sumweights_hist = hist_file.Get(str("/".join([base_name, "sumweights"])))
                 ROOT.SetOwnership(sumweights_hist, False)
                 weight_info = WeightInfo.WeightInfo(
                         mc_info[base_name]['cross_section']*kfac,
@@ -220,7 +226,7 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
         producer = entry["histProducer"]
         config_factory = entry["configFactory"]
         weight = config_factory.getPlotGroupWeight(plot_group)
-        if weight != 1:
+        if weight != 1 and not entry["fromFile"]:
             producer.addWeight(weight)
         for state in states:
             if entry["fromFile"]:
@@ -281,8 +287,17 @@ def getConfigHistFromFile(filename, config_factory, plot_group, selection, branc
         logging.warning(e.message)
         logging.warning("Treating %s as file name" % plot_group)
         filelist = [plot_group]
+
     if branch_name not in config_factory.getListOfPlotObjects():
         raise ValueError("Invalid histogram %s for selection %s" % (branch_name, selection))
+    
+    # If reading from file, the weighted 1D hists need to be precomputed
+    # Look for them stored in the file with the plot_group name
+    weight = config_factory.getPlotGroupWeight(plot_group)
+    if weight != 1:
+        filelist = [str(plot_group)]
+        logging.warning("Treating %s as file name" % plot_group)
+
     hist_file = ROOT.TFile(filename)
     ROOT.SetOwnership(hist_file, False)
     hist_factory = getHistFactory(config_factory, selection, filelist, luminosity, hist_file)

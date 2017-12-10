@@ -124,6 +124,10 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
     recursePrimitives(stackPad, fixFontSize, 1/0.7)
     stackPad.Modified()
     recursePrimitives(ratioPad, fixFontSize, 1/0.3)
+    if "unrolled" in name:
+        centralRatioHist.GetXaxis().SetLabelSize(0.175)
+        centralRatioHist.GetXaxis().SetLabelOffset(0.03)
+        centralRatioHist.GetXaxis().SetTitleOffset(1.25)
     ratioPad.Modified()
     canvas.Update()
     ROOT.SetOwnership(stackPad, False)
