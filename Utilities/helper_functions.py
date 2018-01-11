@@ -521,13 +521,13 @@ def getPlotPaths(selection, folder_name, write_log_file=False):
         html_area = "/afs/cern.ch/user/k/kelong/www"
     base_dir = "%s/DibosonAnalysisData/PlottingResults" % storage_area
     plot_path = "/".join([base_dir, selection] +
-        (['{:%Y-%m-%d}'.format(datetime.datetime.today()),
+       (['{:%Y-%m-%d}'.format(datetime.datetime.today()),
         '{:%Hh%M}'.format(datetime.datetime.today())] if folder_name == "" \
             else [folder_name])
     )
-    makeDirectory(plot_path)
+    makeDirectory(plot_path + "/plots")
     if write_log_file:
-        makeDirectory("/".join([plot_path, "logs"]))
+        makeDirectory(plot_path + "/logs")
     html_path = plot_path.replace(storage_area, html_area)
     return (plot_path, html_path)
 def getGenChannelCut(channel):
@@ -555,18 +555,18 @@ def savePlot(canvas, plot_path, html_path, branch_name, write_log_file, args):
         verbose_log = log_file.replace("event_info", "event_info-verbose")
         shutil.move("temp.txt", log_file) 
         shutil.move("temp-verbose.txt", verbose_log) 
-    output_name ="/".join([plot_path, branch_name]) 
+    output_name ="/".join([plot_path, "plots", branch_name]) 
     canvas.Print(output_name + ".root")
     canvas.Print(output_name + ".C")
     if not args.no_html:
-        makeDirectory(html_path)
-        output_name ="/".join([html_path, branch_name])
+        makeDirectory(html_path + "/plots")
+        output_name ="/".join([html_path, "plots", branch_name])
         canvas.Print(output_name + ".png")
         canvas.Print(output_name + ".eps")
         subprocess.call(["epstopdf", "--outfile=%s" % output_name+".pdf", output_name+".eps"])
         os.remove(output_name+".eps")
         if write_log_file:
-            makeDirectory("/".join([html_path, "logs"]))
+            makeDirectory(html_path + "/logs")
             shutil.copy(log_file, log_file.replace(plot_path, html_path))
             shutil.copy(verbose_log, verbose_log.replace(plot_path, html_path))
     del canvas

@@ -7,7 +7,7 @@ import imghdr
 import argparse
 
 def writeHTML(path, name):
-    image_files = [x for x in glob.glob(path + "/*.*") if imghdr.what(x)]
+    image_files = [x for x in glob.glob(path + "/plots/*.*") if imghdr.what(x)]
     with open('%s/index.html' % path, 'w') as index:
         index = open('%s/index.html' % path, 'w')
         index.write('<html>\n'
@@ -69,10 +69,10 @@ def writeHTML(path, name):
                 '</html>' )
 def getTableRow(image_file):
     return '''    <td style="text-align: center;">
-        <img src="{image}" class="autoResizeImage" /><br/>
+        <img src="plots/{image}" class="autoResizeImage" /><br/>
         <a href="logs/{name}_event_info.log">[log]</a> - 
         <a href="logs/{name}_event_info-verbose.log">[verbose log]</a> - 
-        <a href="{name}.pdf">[pdf]</a>
+        <a href="plots/{name}.pdf">[pdf]</a>
     </td>\n'''.format(image=image_file, name=image_file.split(".")[-2])
     
 def main():

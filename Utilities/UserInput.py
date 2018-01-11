@@ -101,6 +101,8 @@ def getListOfFiles(file_set, selection):
         if "preselection" not in selection:# and "3LooseLeptons" not in selection:
             filelist.append("zg")
         filelist.append("vv" if "pow" not in file_set else "vv-powheg")
+        if "nowz" in file_set:
+            return filelist
         if "pow" in file_set:
             filelist.append("wz-powheg")
         elif "mlm" in file_set:

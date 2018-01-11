@@ -59,6 +59,7 @@ def makeLogFile(channels, hist_stack, data_hist, signal_stack):
         "vv" : "VV (MG5_AMC)",
         "predyield" : "Predicted Yield",
         "data_2016" : "Data",
+        "data_2016H" : "Data (2016H)",
     }
 
     signal_names = []
@@ -67,6 +68,7 @@ def makeLogFile(channels, hist_stack, data_hist, signal_stack):
         signal_names = [h.GetName() for h in signal_stack.GetHists()]
     hist_allbackground = ROOT.TH1D("predyield", "all background", 
                             1+len(channels), 0, 1+len(channels))
+    signal_names.append("predyield") 
     hists.append(hist_allbackground)
     if data_hist:
         hists.Add(data_hist)
