@@ -88,23 +88,29 @@ def makePlot(hist_stack, data_hist, name, args, signal_stack=0, same=""):
     ROOT.SetOwnership(canvas, False)
     stack_signal = signal_stack != 0 and args.stack_signal
     stack_drawexpr = " ".join(["hist"] + 
-        ["nostack" if args.nostack else ""] +
-        ["same" if stack_signal else ""]
+        ["nostack" if args.nostack else ""]
     )
     hists = hist_stack.GetHists()
-    if stack_signal:
-        sum_stack = hists[0].Clone()
-        for hist in hists[1:]:
-            sum_stack.Add(hist)
-        for i,hist in enumerate(signal_stack.GetHists()):
-            hist.Add(sum_stack)
-        signal_stack.Draw("hist nostack" + same)
+    first_stack = hist_stack
+
     hist_stack.Draw(stack_drawexpr + (same if "same" not in stack_drawexpr else ""))
-    if signal_stack != 0 and not args.stack_signal:
+    if signal_stack:
+        if stack_signal:
+            sum_stack = hists[0].Clone()
+            for hist in hists[1:]:
+                skip = False
+                if args.exclude_from_sigstack:
+                    for name in args.exclude_from_sigstack.split(","):
+                        if name not in hist.GetName():
+                            skip = True
+                if not skip:
+                    sum_stack.Add(hist)
+            for i,hist in enumerate(signal_stack.GetHists()):
+                hist.Add(sum_stack)
         signal_stack.Draw("hist nostack same")
         signal_stack.GetHistogram().GetXaxis().SetTitle(
             hists[0].GetXaxis().GetTitle())
-    first_stack = signal_stack if stack_signal else hist_stack
+    #first_stack = signal_stack if stack_signal else hist_stack
     if data_hist:
         data_hist.Draw("e1 same")
     first_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
@@ -307,8 +313,8 @@ def getConfigHistFromFile(filename, config_factory, plot_group, selection, branc
     hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, uncertainties, addOverflow, rebin)
     config_factory.setHistAttributes(hist, branch_name, plot_group)
 
-    if "Up" in hist.GetName() or "Down" in hist.GetName():
-        hist.SetLineStyle(7)
+    #if "Up" in hist.GetName() or "Down" in hist.GetName():
+    #    hist.SetLineStyle(7)
     return hist
 
 def getConfigHistFromTree(config_factory, plot_group, selection, branch_name, channels, blinding=[],
@@ -554,7 +560,8 @@ def savePlot(canvas, plot_path, html_path, branch_name, write_log_file, args):
         log_file = "/".join([plot_path, "logs", "%s_event_info.log" % branch_name])
         verbose_log = log_file.replace("event_info", "event_info-verbose")
         shutil.move("temp.txt", log_file) 
-        shutil.move("temp-verbose.txt", verbose_log) 
+        if os.path.isfile("temp-verbose.txt"):
+            shutil.move("temp-verbose.txt", verbose_log) 
     output_name ="/".join([plot_path, "plots", branch_name]) 
     canvas.Print(output_name + ".root")
     canvas.Print(output_name + ".C")
@@ -568,7 +575,8 @@ def savePlot(canvas, plot_path, html_path, branch_name, write_log_file, args):
         if write_log_file:
             makeDirectory(html_path + "/logs")
             shutil.copy(log_file, log_file.replace(plot_path, html_path))
-            shutil.copy(verbose_log, verbose_log.replace(plot_path, html_path))
+            if os.path.isfile(verbose_log):
+                shutil.copy(verbose_log, verbose_log.replace(plot_path, html_path))
     del canvas
 
 def makeDirectory(path):

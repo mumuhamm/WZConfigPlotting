@@ -43,10 +43,11 @@ def makeLogFile(channels, hist_stack, data_hist, signal_stack):
         log_file.write("Selection: %s" % args.selection)
         log_file.write("\nLuminosity: %0.2f fb^{-1}\n" % (args.luminosity))
         log_file.write('-'*80 + '\n')
-    columns = ["Process", "Total Yield"] + ["\\"+c for c in channels]
+    columns = ["Process"] + ["\\"+c for c in channels] + ["Total Yield"]
     yield_table = PrettyTable(columns)
     yield_info = OrderedDict()
     hists = hist_stack.GetHists() 
+    hists.sort(key=lambda x: x.Integral(), reverse=True)
 
     formatted_names = { "wz-powheg" : "WZ (POWHEG)",
         "wz-mgmlm" : "WZ (MG MLM)",
@@ -56,8 +57,8 @@ def makeLogFile(channels, hist_stack, data_hist, signal_stack):
         "top-ewk" : "t+V/VVV",
         "zg" : "Z$\gamma$",
         "vv-powheg" : "VV (POWHEG)",
-        "vv" : "VV (MG5_AMC)",
-        "predyield" : "Predicted Yield",
+        "vv" : "VV (MG5\_aMC)",
+        "predyield" : "Pred. Background" if signal_stack else "Predicted Yield",
         "data_2016" : "Data",
         "data_2016H" : "Data (2016H)",
     }
@@ -66,16 +67,16 @@ def makeLogFile(channels, hist_stack, data_hist, signal_stack):
     if signal_stack:
         hists += signal_stack.GetHists()
         signal_names = [h.GetName() for h in signal_stack.GetHists()]
+    signal_names.append("predyield") 
     hist_allbackground = ROOT.TH1D("predyield", "all background", 
                             1+len(channels), 0, 1+len(channels))
-    signal_names.append("predyield") 
     hists.append(hist_allbackground)
+
     if data_hist:
         hists.Add(data_hist)
     
     sigfigs = max(len(str(int(data_hist.GetBinContent(1)))), 3)
     for hist in hists:
-        yield_info["Total Yield"] = getFormattedYieldAndError(hist, 1, sigfigs)
         if hist.GetName() not in signal_names and "data" not in hist.GetName():
             hist_allbackground.Add(hist)
         for i, chan in enumerate(channels):
@@ -83,6 +84,7 @@ def makeLogFile(channels, hist_stack, data_hist, signal_stack):
             # This bin 0 is the underflow, bin 1 is total, and bin 2
             # is the first bin with channel content (mmm/emm/eem/eee by default)
             yield_info[chan] = getFormattedYieldAndError(hist, i+2, sigfigs)
+        yield_info["Total Yield"] = getFormattedYieldAndError(hist, 1, sigfigs)
         yield_table.add_row([formatted_names[hist.GetName()]] + yield_info.values())
     with open("temp.txt", "a") as log_file:
         log_file.write(yield_table.get_latex_string())

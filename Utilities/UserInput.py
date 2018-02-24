@@ -58,6 +58,9 @@ def getDefaultParser():
                         help="Don't stack hists")
     parser.add_argument("--stack_signal", action='store_true',
                         help="Stack signal hists on top of background")
+    parser.add_argument("--exclude_from_sigstack", type=str,
+                        help="backgrounds to exclude when making signal stacks."
+                        " Names separated by commas")
     parser.add_argument("--no_ratio", action="store_true",
                         help="Do not add ratio comparison")
     parser.add_argument("--no_html", action='store_true',

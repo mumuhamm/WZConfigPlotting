@@ -90,14 +90,21 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
     if compareData:
         if len(stack_hists) > 1:
             map(centralRatioHist.Add, stack_hists[1:])
+    centralHist = centralRatioHist.Clone("temp")
     centralRatioHist.SetFillColor(ROOT.TColor.GetColor("#e4e5e5"))
     centralRatioHist.SetMarkerSize(0)
     for ratioHist in ratioHists:
-        ratioHist.Divide(centralRatioHist)
+        tmpRatio = ratioHist.Clone("tempRatio")
+        ratioHist.Divide(centralHist)
         for i in range(ratioHist.GetNbinsX()+2):
-            ratioHist.SetBinError(i, ratioHist.GetBinError(i)/max(ratioHist.GetBinContent(i), 1))
+            denom = tmpRatio.GetBinContent(i)
+            if denom == 0: continue
+            ratioHist.SetBinError(i, tmpRatio.GetBinError(i)/denom)
+        del tmpRatio
     for i in range(centralRatioHist.GetNbinsX()+2):
-        centralRatioHist.SetBinError(i, centralRatioHist.GetBinError(i)/max(centralRatioHist.GetBinContent(i), 1))
+        denom = centralHist.GetBinContent(i)
+        if denom == 0: continue
+        centralRatioHist.SetBinError(i, centralHist.GetBinError(i)/denom)
         centralRatioHist.SetBinContent(i, 1.)
     stack_hists[0].GetXaxis().Copy(centralRatioHist.GetXaxis())
     stack_hists[0].GetXaxis().Copy(centralRatioHist.GetXaxis())
@@ -112,13 +119,20 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
     centralRatioHist.GetYaxis().SetLabelSize(centralRatioHist.GetYaxis().GetLabelSize()*0.8)
     centralRatioHist.Draw("E2")
     for ratioHist in ratioHists:
-        ratioHist.Draw("same")
+        drawOpt = "same"
+        if not compareData:
+            ratioHist.SetMarkerSize(0)
+            ratioHist.SetMarkerColor(ratioHist.GetLineColor())
+            ratioHist.SetFillColor(ratioHist.GetLineColor())
+            drawOpt += " E2"
+        ratioHist.Draw(drawOpt)
     stacks = filter(lambda p: type(p) is ROOT.THStack, stackPad.GetListOfPrimitives())
     for stack in stacks:
         stack.GetXaxis().SetTitle("")
         stack.GetXaxis().SetLabelOffset(999)
     xaxis = ratioHists[0].GetXaxis()
     line = ROOT.TLine(xaxis.GetBinLowEdge(xaxis.GetFirst()), 1, xaxis.GetBinUpEdge(xaxis.GetLast()), 1)
+    #line = ROOT.TLine(xaxis.GetBinLowEdge(4), 1, xaxis.GetBinUpEdge(26), 1)
     line.SetLineStyle(ROOT.kDotted)
     line.Draw()
     recursePrimitives(stackPad, fixFontSize, 1/0.7)
