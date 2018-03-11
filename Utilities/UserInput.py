@@ -115,7 +115,6 @@ def getListOfFiles(file_set, selection):
         if "atgc" in file_set: 
             filelist.append("wz-atgc")
         if "vbs" in file_set: 
-            #filelist.append("wzjj-aqgcfm__sm")
             if "nlo" in file_set:
                 filelist.append("wzjj-vbfnlo")
             else:

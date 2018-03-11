@@ -97,6 +97,7 @@ def main():
             config_factory.setHistAttributes(central_hist, branch, file_name)
             config_factory.setHistAttributes(up_hist, branch, file_name)
             config_factory.setHistAttributes(down_hist, branch, file_name)
+            
             central_hist.SetMinimum(0.001)
             central_hist.SetFillColor(0)
             up_hist.SetFillColor(0)
@@ -109,6 +110,14 @@ def main():
             up_hist.SetLineStyle(5)
             down_hist.SetLineStyle(5)
 
+            if "wzQCDModeling" in up_hist.GetName():
+                print "Oui oui"
+                up_hist.SetLineColor(ROOT.TColor.GetColor("#980000"))
+                down_hist.SetLineColor(ROOT.TColor.GetColor("#980000"))
+            #elif "wz-mgmlm_scale" in up_hist.GetName():
+            #    up_hist.SetLineColor(ROOT.TColor.GetColor("#016300"))
+            #    down_hist.SetLineColor(ROOT.TColor.GetColor("#016300"))
+
             hist_stack.Add(central_hist)
             hist_stack.Add(up_hist)
             hist_stack.Add(down_hist)
@@ -118,14 +127,16 @@ def main():
         hist_stack.Draw("nostack hist")
         hist_stack.SetMinimum(central_hist.GetMinimum()*args.scaleymin)
         hist_stack.SetMaximum(central_hist.GetMaximum()*args.scaleymax)
+        hist_stack.GetHistogram().GetYaxis().SetTitle("Events / bin")
+        hist_stack.GetHistogram().GetYaxis().SetTitleOffset(1.05)
 
-        text_box = ROOT.TPaveText(0.65, 0.85-0.1*len(systematics), 0.9, 0.85, "NDCnb")
+        text_box = ROOT.TPaveText(0.65, 0.75-0.1*len(systematics), 0.9, 0.85, "NDCnb")
         text_box.SetFillColor(0)
         text_box.SetTextFont(42)
         text_box.AddText("Sytematic variation")
         for s in systematics:
             text_box.AddText(s)
-        for line, h in zip(text_box.GetListOfLines()[1:], hist_stack.GetHists()[::3]):
+        for line, h in zip(text_box.GetListOfLines()[1:], hist_stack.GetHists()[1::3]):
             line.SetTextColor(h.GetLineColor())
         text_box.Draw()
         if args.logy:
@@ -136,6 +147,12 @@ def main():
                     "syst./cent.",
                     [float(i) for i in args.ratio_range]
             )
+            ratioPad = canvas.FindObject("ratioPad")
+            hist = ratioPad.GetListOfPrimitives().FindObject("canvas_central_ratioHist")
+            hist.GetXaxis().SetLabelSize(0.175)
+            hist.GetXaxis().SetLabelOffset(0.03)
+            hist.GetXaxis().SetTitleOffset(1.15)
+            canvas.Update()
         helper.savePlot(canvas, plot_path, html_path, plot_name, True, args)
         makeSimpleHtml.writeHTML(html_path.replace("/plots",""), args.selection)
 

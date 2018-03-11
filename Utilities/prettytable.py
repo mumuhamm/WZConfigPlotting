@@ -359,10 +359,10 @@ class PrettyTable:
         self.set_border_chars("&", "", "")
         latex_string = "\\begin{table}\n"
         latex_string += "  \\centering\n"
-        latex_string += "  \\begin{tabular}{| %s |} \n" % "|".join(["c" for i in self.fields])
+        latex_string += "  \\begin{tabular}{ %s } \n" % "|".join(["c" for i in self.fields])
         for line in self.get_string(start, end, fields, header, border, hrules, sortby, reversesort).splitlines():
             if line == "":
-                latex_string += "    \\hline\n"
+                latex_string += "    \\hline\\hline\n"
                 continue
             latex_line = line.replace("& ", "", 1)
             latex_string += "    " + latex_line[::-1].replace("&",r"\\",1)[::-1] + "\n"

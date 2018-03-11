@@ -58,6 +58,8 @@ def makeLogFile(channels, hist_stack, data_hist, signal_stack):
         "zg" : "Z$\gamma$",
         "vv-powheg" : "VV (POWHEG)",
         "vv" : "VV (MG5\_aMC)",
+        "wz" : "WZ (MG5\_aMC)",
+        "wz-powheg" : "WZ (POWHEG)",
         "predyield" : "Pred. Background" if signal_stack else "Predicted Yield",
         "data_2016" : "Data",
         "data_2016H" : "Data (2016H)",
@@ -75,7 +77,7 @@ def makeLogFile(channels, hist_stack, data_hist, signal_stack):
     if data_hist:
         hists.Add(data_hist)
     
-    sigfigs = max(len(str(int(data_hist.GetBinContent(1)))), 3)
+    sigfigs = 3 if not data_hist else max(len(str(int(data_hist.GetBinContent(1)))), 3)
     for hist in hists:
         if hist.GetName() not in signal_names and "data" not in hist.GetName():
             hist_allbackground.Add(hist)
@@ -85,7 +87,7 @@ def makeLogFile(channels, hist_stack, data_hist, signal_stack):
             # is the first bin with channel content (mmm/emm/eem/eee by default)
             yield_info[chan] = getFormattedYieldAndError(hist, i+2, sigfigs)
         yield_info["Total Yield"] = getFormattedYieldAndError(hist, 1, sigfigs)
-        yield_table.add_row([formatted_names[hist.GetName()]] + yield_info.values())
+        yield_table.add_row([formatted_names[hist.GetName().replace("_standalone","")]] + yield_info.values())
     with open("temp.txt", "a") as log_file:
         log_file.write(yield_table.get_latex_string())
 

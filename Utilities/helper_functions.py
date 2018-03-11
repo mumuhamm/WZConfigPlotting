@@ -101,7 +101,7 @@ def makePlot(hist_stack, data_hist, name, args, signal_stack=0, same=""):
                 skip = False
                 if args.exclude_from_sigstack:
                     for name in args.exclude_from_sigstack.split(","):
-                        if name not in hist.GetName():
+                        if name in hist.GetName():
                             skip = True
                 if not skip:
                     sum_stack.Add(hist)

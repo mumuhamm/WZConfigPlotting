@@ -149,10 +149,12 @@ def main():
             if not args.no_data:
                 if args.hist_file == "":
                     data_hist = helper.getConfigHistFromTree(config_factory, "data_2016", args.selection, 
+                    #data_hist = helper.getConfigHistFromTree(config_factory, "data_all", args.selection, 
                             branch_name, args.channels, args.blinding, 1, not args.no_overflow, args.rebin, 
                             cut_string)
                 else:
-                    data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_2016", 
+                    data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_all", 
+                    #data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_2016", 
                             args.selection, branch_name, args.channels,addOverflow=(not args.no_overflow), rebin=args.rebin)
                 with open("temp.txt", "a") as events_log_file:
                     events_log_file.write("\nNumber of events in data: %i\n" % data_hist.Integral())

@@ -125,6 +125,8 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
             ratioHist.SetMarkerColor(ratioHist.GetLineColor())
             ratioHist.SetFillColor(ratioHist.GetLineColor())
             drawOpt += " E2"
+        else:
+            drawOpt += " e0"
         ratioHist.Draw(drawOpt)
     stacks = filter(lambda p: type(p) is ROOT.THStack, stackPad.GetListOfPrimitives())
     for stack in stacks:
