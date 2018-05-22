@@ -60,6 +60,7 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
     stacks = filter(lambda p: type(p) is ROOT.THStack and "signal" not in p.GetName(), oldcanvas.GetListOfPrimitives())
     signal_stacks = filter(lambda p: type(p) is ROOT.THStack and "signal" in p.GetName(), oldcanvas.GetListOfPrimitives())
     data_list = filter(lambda p: type(p) is ROOT.TH1D and 'data' in p.GetName().lower(), oldcanvas.GetListOfPrimitives())
+    print "Found data?", data_list
     compareData = True
     stack_hists = [i for s in stacks for i in s.GetHists()]
     signal_hists = [i for s in signal_stacks for i in s.GetHists()]
