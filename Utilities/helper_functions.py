@@ -79,7 +79,7 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=[0]):
         canvas.SetLogy()
     if not args.no_ratio:
         canvas = plotter.splitCanvas(canvas, canvas_dimensions,
-                "Data / Pred." if data_hists[0] else args.ratio_text,
+                "#scale[0.85]{Data / Pred.}" if data_hists[0] else args.ratio_text,
                 [float(i) for i in args.ratio_range]
         )
     return canvas

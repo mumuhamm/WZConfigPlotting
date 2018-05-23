@@ -20,6 +20,8 @@ def getComLineArgs():
     parser = UserInput.getDefaultParser()
     parser.add_argument("-s", "--selection", type=str, required=True,
                         help="Specificy selection level to run over")
+    parser.add_argument("--noCR", action='store_true',
+                        help="Remove control region from fit distribution")
     parser.add_argument("-b", "--branches", type=str, default="all",
                         help="List (separate by commas) of names of branches "
                         "in root and config file to plot") 
@@ -34,6 +36,15 @@ def histFromGraph(graph, name):
         graph.GetPoint(i, x, y)
         hist.Fill(x[0], y[0])
     return hist
+
+def removeControlRegion(hist):
+    nbins = hist.GetNbinsX()-1
+    name = hist.GetName() +"_noCR"
+    new_hist = ROOT.TH1D(name, name, nbins, 0, nbins)
+    for i in range(2, hist.GetNbinsX()+1):
+        new_hist.SetBinContent(i-1, hist.GetBinContent(i))
+        new_hist.SetBinError(i-1, hist.GetBinError(i))
+    return new_hist
 
 def main():
     args = getComLineArgs()
@@ -55,7 +66,7 @@ def main():
             mc_file.write("Selection: %s" % args.selection)
             mc_file.write("\nPlotting branch: %s\n" % branch)
 
-        plot_name = "WZjjPostFit"
+        plot_name = "mjj_etajj_unrolled" if args.noCR else "mjj_etajj_unrolled_wCR"
         if args.append_to_name:
             plot_name += "_" + args.append_to_name
         hist_stack = ROOT.THStack("stack_postfit", "stack_postfile")
@@ -71,6 +82,8 @@ def main():
                 hist = rtfile.Get(hist_name)
                 if hist.InheritsFrom("TGraph"):
                     hist = histFromGraph(hist, "_".join([plot_group, chan]))
+                if args.noCR:
+                    hist = removeControlRegion(hist)
                 if not central_hist:
                     central_hist = hist
                     central_hist.SetName(plot_group)
@@ -95,35 +108,33 @@ def main():
                 data_hist = central_hist
                 data_hist.Sumw2(False)
                 data_hist.SetBinErrorOption(ROOT.TH1.kPoisson)
-        canvas = helper.makePlots([hist_stack], [data_hist], "mjj_etajj_unrolled_wCR", args,)
+        canvas = helper.makePlots([hist_stack], [data_hist], plot_name, args,)
+        if "CR" not in plot_name:
+            ratioPad = canvas.GetListOfPrimitives().FindObject("ratioPad")
+            stackPad = canvas.GetListOfPrimitives().FindObject("stackPad")
+            ratiohist = ratioPad.GetListOfPrimitives().FindObject('%s_canvas_central_ratioHist' % plot_name)
+            xaxis = hist.GetXaxis()
+            maximum = hist_stack.GetHistogram().GetMaximum()
+            for i in [4,8]:
+                line = ROOT.TLine(xaxis.GetBinUpEdge(i), hist_stack.GetMinimum(), xaxis.GetBinUpEdge(i), maximum)
+                line.SetLineStyle(7)
+                line.SetLineColor(ROOT.kGray+2)
+                line.SetLineWidth(2)
+                stackPad.cd()
+                line.Draw()
+                ROOT.SetOwnership(line, False)
+            for i, label in enumerate(["#in [2.5, 4]", "#in [4, 5]", "#geq 5   "]):
+                xmin = 0.22 + 0.24*i +0.05*(i==2)
+                ymin = 0.15 if i == 2 else 0.5
+                ymax = ymin + (0.2 if i ==0 else 0.18)
+                xmax = xmin + (0.19 if i ==0 else 0.175)
+                text_box = ROOT.TPaveText(xmin, ymin, xmax, ymax, "NDCnb")
+                text_box.SetFillColor(0)
+                text_box.SetTextFont(42)
+                text_box.AddText("#Delta#eta_{jj} %s" % label)
+                text_box.Draw()
+                ROOT.SetOwnership(text_box, False)
 
-        #canvas_dimensions = [1200, 800]
-        #canvas = ROOT.TCanvas("canvas", "canvas", *canvas_dimensions)
-        #hist_stack.Draw("hist")
-        #if data_hist:
-        #    if data_hist.InheritsFrom("TGraph"):
-        #        data_hist.Draw("same P")
-        #    else:
-        #        data_hist.Draw("same")
-        #hist_stack.SetMinimum(central_hist.GetMinimum()*args.scaleymin)
-        #hist_stack.SetMaximum(central_hist.GetMaximum()*args.scaleymax)
-        #hist_stack.GetHistogram().GetYaxis().SetTitle("Events / bin")
-        #hist_stack.GetHistogram().GetYaxis().SetTitleOffset(1.05)
-
-        #if args.logy:
-        #    canvas.SetLogy()
-
-        #if not args.no_ratio:
-        #    canvas = plotter.splitCanvas(canvas, canvas_dimensions,
-        #            "Data / Pred.",
-        #            [float(i) for i in args.ratio_range]
-        #    )
-        #    ratioPad = canvas.FindObject("ratioPad")
-        #    hist = ratioPad.GetListOfPrimitives().FindObject("canvas_central_ratioHist")
-        #    hist.GetXaxis().SetLabelSize(0.175)
-        #    hist.GetXaxis().SetLabelOffset(0.03)
-        #    hist.GetXaxis().SetTitleOffset(1.15)
-        #    canvas.Update()
         helper.savePlot(canvas, plot_path, html_path, plot_name, True, args)
         makeSimpleHtml.writeHTML(html_path.replace("/plots",""), args.selection)
 
