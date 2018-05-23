@@ -17,7 +17,7 @@ from IPython import embed
 
 #logging.basicConfig(level=logging.DEBUG)
 
-def makePlots(hist_stacks, data_hists, name, args, signal_stacks=0):
+def makePlots(hist_stacks, data_hists, name, args, signal_stacks=[0]):
     canvas_dimensions = [800, 800] if "unrolled" not in name else [1200, 800]
     canvas = ROOT.TCanvas("%s_canvas" % name, name, *canvas_dimensions) 
     first = True
@@ -79,7 +79,7 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=0):
         canvas.SetLogy()
     if not args.no_ratio:
         canvas = plotter.splitCanvas(canvas, canvas_dimensions,
-                "Data / SM" if data_hists[0] else args.ratio_text,
+                "Data / Pred." if data_hists[0] else args.ratio_text,
                 [float(i) for i in args.ratio_range]
         )
     return canvas
