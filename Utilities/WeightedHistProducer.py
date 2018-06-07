@@ -26,6 +26,7 @@ class WeightedHistProducer(HistProducer):
 
     def produce(self, draw_expr, proof_path="", overflow=False, cut_string=""): 
         proof = ROOT.gProof
+        print "PROOF PATH IS", proof_path
         if cut_string == "":
             cut_string = self.cut_string
         append_cut = lambda x: "*(%s)" % x if x != "" else x
@@ -52,10 +53,6 @@ class WeightedHistProducer(HistProducer):
             num_bins = hist.GetSize() - 2
             add_overflow = hist.GetBinContent(num_bins) + hist.GetBinContent(num_bins + 1)
             hist.SetBinContent(num_bins, add_overflow)
-        #Normalize to unity if lumi is negative
-        # Don't do this for data, where cross section and lumi are both 1
-        if self.lumi == 1/self.getCrossSection() and self.getCrossSection() != 1:
-            hist.Scale(1/hist.Integral())
         return hist
 # For testing
 def main():

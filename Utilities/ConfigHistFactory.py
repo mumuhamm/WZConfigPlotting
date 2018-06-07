@@ -92,9 +92,9 @@ class ConfigHistFactory(object):
         plot_group = self.plot_groups[info[plot_group]['plot_group']] \
                 if plot_group not in self.plot_groups.keys() else self.plot_groups[plot_group]
         hist.SetTitle(plot_group['Name'])
-        #if 'Scale' in plot_group.keys():
-        #    hist.Scale(plot_group['Scale'])
-        #    print "Scaling by", plot_group['Scale']
+        if 'Scale' in plot_group.keys():
+            logging.warning("Scaling plot_group %s by %0.2f" % (plot_group['Name'], plot_group['Scale']))
+            hist.Scale(plot_group['Scale'])
         config.setAttributes(hist, self.styles[plot_group['Style']])
         #object_name = object_name if object_name in self.plot_objects else object_name.split("_")[0]
         config.setAttributes(hist, self.plot_objects[object_name]['Attributes'])

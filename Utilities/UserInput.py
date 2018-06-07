@@ -24,6 +24,8 @@ def getDefaultParser():
                         "Note: Leave unspecified for auto naming")
     parser.add_argument("--hist_file", type=str, default="",
                         help="Read histograms from file")
+    parser.add_argument("--rebin", type=lambda x: [float(i) for i in x.split(",")], default=0,
+                        help="Rebin (integer)")
     parser.add_argument("--legend_left", action="store_true",
                         help="Put legend left or right")
     parser.add_argument("--folder_name", type=str, default="",
@@ -36,6 +38,8 @@ def getDefaultParser():
                         help="Scale default ymin by this amount")
     parser.add_argument("--scalelegy", type=float, default=1.0,
                         help="Scale default legend entry size by this amount")
+    parser.add_argument("--scalelegx", type=float, default=1.0,
+                        help="Scale default legend entry wdith by this amount")
     parser.add_argument("--ratio_range", nargs=2, default=[0.4,1.6],
                         help="Ratio min ratio max (default 0.5 1.5)")
     parser.add_argument("--scalexmax", type=float, default=1.0,
@@ -51,7 +55,7 @@ def getDefaultParser():
     parser.add_argument("-u", "--uncertainties", type=str, default="all",
                         choices=["all", "stat", "scale", "none"],
                         help="Include error bands for specfied uncertainties")
-    parser.add_argument("-l", "--luminosity", type=float, default=1,
+    parser.add_argument("-l", "--luminosity", type=float, default=-1,
                         help="Luminsoity in fb-1. Default 1 fb-1. "
                         "Set to -1 for unit normalization")
     parser.add_argument("--nostack", action='store_true',
@@ -86,40 +90,39 @@ def getDefaultParser():
                         "separated by a comma (match name in file_info.json)")
     return parser 
 def getListOfFiles(file_set, selection):
-    file_set = file_set.lower()
-    if "wzxsec2016" in file_set:
-        filelist = []
-        if "nonprompt" in file_set:
-            filelist.append("nonprompt")
-        else:
-            if "dyjets-nlo" in file_set:
-                drellyan = "dyjets_nlo"
-            elif "dylo" in file_set:
-                drellyan = "dy-lo"
+    filelist = []
+    for files in [x.strip() for x in file_set.split(",")]:
+        fileset_nc = files.lower()
+        if "wzxsec2016" in fileset_nc:
+            if "vbsfill" in fileset_nc: 
+                filelist.append("wzjj-ewk_filled")
+            if "pow" in fileset_nc:
+                filelist.append("wz-powheg")
+            elif "mlm" in fileset_nc:
+                filelist.append("wz-mgmlm")
             else:
-                drellyan = "dyjets"
-            filelist = [drellyan]
-            filelist.append("top-nonprompt")
-        filelist.append("top-ewk")
-        if "preselection" not in selection:# and "3LooseLeptons" not in selection:
-            filelist.append("zg")
-        filelist.append("vv" if "pow" not in file_set else "vv-powheg")
-        if "nowz" in file_set:
-            return filelist
-        if "pow" in file_set:
-            filelist.append("wz-powheg")
-        elif "mlm" in file_set:
-            filelist.append("wz-mgmlm")
-        else:
-            filelist.append("wz")
-        if "atgc" in file_set: 
-            filelist.append("wz-atgc")
-        if "vbs" in file_set: 
-            if "nlo" in file_set:
-                filelist.append("wzjj-vbfnlo")
+                filelist.append("wz")
+            filelist.append("top-ewk")
+            filelist.append("vv" if "pow" not in fileset_nc else "vv-powheg")
+            if "nonprompt" in fileset_nc:
+                filelist.append("nonprompt")
             else:
-                filelist.append("wlljj-ewk")
-        elif "aqgc" in file_set:
-            filelist.append("wzjj-aqgcfm__fm0-4")
-        return filelist
-    return [x.strip() for x in file_set.split(",")]
+                if "dyjets-nlo" in fileset_nc:
+                    drellyan = "dyjets_nlo"
+                elif "dylo" in fileset_nc:
+                    drellyan = "dy-lo"
+                else:
+                    drellyan = "dyjets"
+                filelist.append(drellyan)
+                filelist.append("top-nonprompt")
+            if "preselection" not in selection:# and "3LooseLeptons" not in selection:
+                filelist.append("zg")
+            if "atgc" in fileset_nc: 
+                filelist.append("wz-atgc")
+            elif "aqgc" in fileset_nc:
+                filelist.append("wzjj-aqgcfm__fm0-4")
+            if "vbs" in fileset_nc and not "vbsfill" in fileset_nc:
+                filelist.append("wzjj-ewk")
+        else:
+            filelist.append(files)
+    return filelist

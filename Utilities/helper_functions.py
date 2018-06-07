@@ -13,6 +13,7 @@ import datetime
 import shutil
 import errno
 import math
+import array
 from IPython import embed
 
 #logging.basicConfig(level=logging.DEBUG)
@@ -31,6 +32,7 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=0):
         width = .2 if "WZxsec" in args.selection else 0.33
     else: 
         width = .33
+    width *= args.scalelegx
     xcoords = [.10+offset, .1+width+offset] if args.legend_left \
         else [.92-width-offset, .92-offset]
     unique_entries = min(len(hist_stacks[0].GetHists()), 8)
@@ -41,6 +43,7 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=0):
     if "none" not in args.uncertainties:
         histErrors = getHistErrors(hist_stacks[0], args.nostack)
         for error_hist in histErrors:
+            ROOT.SetOwnership(error_hist, False)
             error_hist.Draw("same e2")
             error_title = "Stat. Unc."
             if "all" in args.uncertainties:
@@ -70,6 +73,8 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=0):
         ymin = ymax - box_size
         text_box = ROOT.TPaveText(coords[0], ymin, coords[2], ymax, "NDCnb")
         text_box.SetFillColor(0)
+        text_box.SetFillStyle(0)
+        text_box.SetLineColor(0)
         text_box.SetTextFont(42)
         for i, line in enumerate(lines):
             text_box.AddText(line)
@@ -112,11 +117,19 @@ def makePlot(hist_stack, data_hist, name, args, signal_stack=0, same=""):
             hists[0].GetXaxis().GetTitle())
     #first_stack = signal_stack if stack_signal else hist_stack
     if data_hist:
-        data_hist.Draw("e1 same")
+        data_hist.Sumw2(False)
+        data_hist.SetBinErrorOption(ROOT.TH1.kPoisson)
+        data_hist.Draw("e0 p0 same")
     first_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
     first_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
     first_stack.GetYaxis().SetTitle(
         hists[0].GetYaxis().GetTitle())
+
+    if not args.no_ratio and float(ROOT.gROOT.GetVersion().split("/")[0]) > 6.07:
+        # Remove first bin label to avoid overlap of canvases
+        if not args.logy:
+            first_stack.GetHistogram().SetMinimum(0)
+        first_stack.GetYaxis().ChangeLabel(1, -1.0, 0)
     first_stack.GetHistogram().GetXaxis().SetTitle(
         hists[0].GetXaxis().GetTitle())
     first_stack.GetHistogram().SetLabelSize(0.04)
@@ -216,10 +229,12 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, hist_file=
         hist_factory[name].update({"fromFile" : hist_file is not None})
     return hist_factory
 def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, 
-        uncertainties="none", addOverflow=False, rebin=0, cut_string=""):
+        uncertainties="none", addOverflow=False, rebin=0, cut_string="", removeNegatives=True):
     hist_name = "_".join([plot_group, selection.replace("/", "_"), branch_name])
-    rootdir = "gProof" if hasattr(ROOT, "gProof") else "gROOT"
-    hist = getattr(ROOT, rootdir).FindObject(hist_name)
+    # TODO: Understand why this is broken in newer ROOT versions
+    #rootdir = "gProof" if hasattr(ROOT, "gProof") else "gROOT"
+    #hist = getattr(ROOT, rootdir).FindObject(str(hist_name))
+    hist = ROOT.gROOT.FindObject(hist_name)
     if hist:
         hist.Delete()
     if not hist_factory.itervalues().next()["fromFile"]:
@@ -263,9 +278,9 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
                     hist.SetTitle(hist_name)
             else:
                 hist.Add(state_hist)
-            final_counts[state] += state_hist.Integral()
+            final_counts[state] += state_hist.Integral() 
             log_info += "Number of events in %s channel: %0.2f\n" % (state, state_hist.Integral())
-            log_info += "Number of entries is %i\n" % state_hist.GetEntries() 
+            log_info += "Number of entries is %i\n" % (state_hist.GetEntries() - addOverflow)
         log_info += "Total number of events: %0.2f\n" % (hist.Integral() if hist and hist.InheritsFrom("TH1") else 0)
         log_info += "Cross section is %0.4f\n" % producer.getCrossSection()
         log_info += "Sum of weights is %0.2f\n" % producer.getSumOfWeights() 
@@ -281,12 +296,18 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
         log_file.write(log_info)
     if not hist or not hist.InheritsFrom("TH1"):
         raise ValueError("Invalid histogram %s for selection %s" % (branch_name, selection))
+    if removeNegatives and "data" not in name:
+        removeZeros(hist)
     if rebin:
-        hist.Rebin(rebin)
+        if len(rebin) == 1:
+            hist.Rebin(int(rebin[0]))
+        else:
+            bins = array.array('d', rebin)
+            hist = hist.Rebin(len(bins)-1, "", bins)
     return hist
 
 def getConfigHistFromFile(filename, config_factory, plot_group, selection, branch_name, channels,
-        luminosity=1, addOverflow=False, rebin=0, uncertainties="none"):
+        luminosity=1, addOverflow=False, rebin=0, uncertainties="none", removeNegatives=True):
     try:
         filelist = config_factory.getPlotGroupMembers(plot_group)
     except ValueError as e:
@@ -313,8 +334,6 @@ def getConfigHistFromFile(filename, config_factory, plot_group, selection, branc
     hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, uncertainties, addOverflow, rebin)
     config_factory.setHistAttributes(hist, branch_name, plot_group)
 
-    #if "Up" in hist.GetName() or "Down" in hist.GetName():
-    #    hist.SetLineStyle(7)
     return hist
 
 def getConfigHistFromTree(config_factory, plot_group, selection, branch_name, channels, blinding=[],
@@ -354,7 +373,8 @@ def getConfigHistFromTree(config_factory, plot_group, selection, branch_name, ch
 #        scale_name = hist_name + "_lheWeights"
 #    original_cut_string = cut_string
     
-    hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, trees, uncertainties, addOverflow, rebin, cut_string)
+    hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, trees, 
+            uncertainties, addOverflow, rebin, cut_string)
     config_factory.setHistAttributes(hist, branch_name, plot_group)
     return hist
 
@@ -578,6 +598,19 @@ def savePlot(canvas, plot_path, html_path, branch_name, write_log_file, args):
             if os.path.isfile(verbose_log):
                 shutil.copy(verbose_log, verbose_log.replace(plot_path, html_path))
     del canvas
+
+# Leave zero events untouched, fix negative yields (for nonprompt)
+def removeZeros(hist):
+    for i in range(hist.GetNbinsX()+2):
+        err = hist.GetBinError(i)
+        if hist.GetBinContent(i) < 0:
+            if "Up" in hist.GetName():
+                hist.SetBinContent(i, 0.0001)
+            elif "Down" in hist.GetName():
+                hist.SetBinContent(i, 0.00001)
+            else: 
+                hist.SetBinContent(i, 0.001)
+            hist.SetBinError(i, err)
 
 def makeDirectory(path):
     '''
