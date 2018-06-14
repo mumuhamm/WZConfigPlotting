@@ -112,7 +112,7 @@ def makePlot(hist_stack, data_hist, name, args, signal_stack=0, same=""):
             hists[0].GetXaxis().GetTitle())
     #first_stack = signal_stack if stack_signal else hist_stack
     if data_hist:
-        data_hist.Draw("e1 same")
+        data_hist.Draw("e1 e0 same")
     first_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
     first_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
     first_stack.GetYaxis().SetTitle(

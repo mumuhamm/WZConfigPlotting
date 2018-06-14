@@ -8,6 +8,7 @@ import Utilities.UserInput as UserInput
 import os
 from Utilities.ConfigHistFactory import ConfigHistFactory 
 from Utilities.prettytable import PrettyTable
+from collections import OrderedDict
 import math
 import sys
 import array
@@ -26,6 +27,70 @@ def getComLineArgs():
                         help="List (separate by commas) of names of branches "
                         "in root and config file to plot") 
     return parser.parse_args()
+
+def getFormattedYieldAndError(integral, error, sigfigs):
+    result = "%0.1f" % round(integral, 1)
+
+    error_digits = 0
+    error_string = " $\pm$ %i"
+    if len(result.split(".")) == 2:
+        error_digits = len(result.split(".")[1])
+        error_string = " $\pm$ %.{digits}f".format(digits=error_digits)
+    error = round(error, error_digits)
+
+    return result + (error_string % error)
+
+def makeLogFile(channels, hist_info, args):
+    with open("temp.txt", "w") as log_file:
+        meta_info = '-'*80 + '\n' + \
+            'Script called at %s\n' % datetime.datetime.now() + \
+            'The command was: %s\n' % ' '.join(sys.argv) + \
+            '-'*80 + '\n'
+        log_file.write(meta_info)
+        log_file.write("Selection: %s" % args.selection)
+        log_file.write("\nLuminosity: %0.2f fb^{-1}\n" % (args.luminosity))
+        log_file.write('-'*80 + '\n')
+    columns = ["Process"] + ["\\"+c for c in channels] + ["Total Yield"]
+    yield_table = PrettyTable(columns)
+    yield_info = OrderedDict()
+
+    formatted_names = { "wz-powheg" : "WZ (POWHEG)",
+        "wz-mgmlm" : "WZ (MG MLM)",
+        "QCD-WZjj" : "QCD-WZjj",
+        "EW-WZjj" : "EW-WZjj",
+        "wzjj-ewk" : "WZjj EWK",
+        "wzjj-vbfnlo" : "WZjj EWK (VBFNLO)",
+        "nonprompt" : "Nonprompt",
+        "top-ewk" : "t+V/VVV",
+        "zg" : "Z$\gamma$",
+        "vv-powheg" : "VV (POWHEG)",
+        "vv" : "VV",
+        "wz" : "WZ (MG5\_aMC)",
+        "wz-powheg" : "WZ (POWHEG)",
+        "predyield" : "Pred. Background",
+        "data_2016" : "Data",
+        "data" : "Data",
+        "data_2016H" : "Data (2016H)",
+    }
+
+    sigfigs = 3
+    for name, entry in hist_info.iteritems():
+        for i, chan in enumerate(channels):
+            # Channels should be ordered the same way as passed to the histogram
+            # This bin 0 is the underflow, bin 1 is total, and bin 2
+            # is the first bin with channel content (mmm/emm/eem/eee by default)
+            if name == "data":
+                yield_info[chan] = "%i" % entry[chan][0] 
+            else:
+                yield_info[chan] = getFormattedYieldAndError(entry[chan][0], entry[chan][1], sigfigs)
+        if name == "data":
+            yield_info["Total Yield"] = "%i" % entry["total"][0] 
+        else:
+            yield_info["Total Yield"] = getFormattedYieldAndError(entry["total"][0], entry["total"][1], sigfigs)
+        yield_table.add_row([formatted_names[name]] + yield_info.values())
+    with open("temp.txt", "a") as log_file:
+        log_file.write(yield_table.get_latex_string())
+
 
 def histFromGraph(graph, name):
     nentries = graph.GetN()
@@ -60,6 +125,8 @@ def main():
     rtfile = ROOT.TFile(args.hist_file)
 
     channels = args.channels.split(",")
+    hist_info = {}
+    hist_info["predyield"] = {"total" : [0,0], "eee" : [0,0], "eem" : [0,0], "emm" : [0,0], "mmm" : [0,0]}
     for branch in args.branches.split(","):
         with open("temp.txt", "w") as mc_file:
             mc_file.write(meta_info)
@@ -75,6 +142,7 @@ def main():
         if not args.no_data:
             plot_groups.append("data")
         for i, plot_group in enumerate(plot_groups):
+            hist_info[plot_group] = {"total" : (0,0), "eee" : (0,0), "eem" : (0,0), "emm" : (0,0), "mmm" : (0,0)}
             central_hist = 0
             for chan in channels:
                 hist_name = "/".join(["shapes_fit_s", chan, plot_group])
@@ -89,6 +157,15 @@ def main():
                     central_hist.SetName(plot_group)
                 else:
                     central_hist.Add(hist)
+                error = array.array('d', [0])
+                integral = hist.IntegralAndError(0, hist.GetNbinsX(), error)
+                hist_info[plot_group][chan] = (integral, error[0])
+                if "data" not in plot_group and plot_group != "EW-WZjj":
+                    hist_info["predyield"][chan][0] += integral
+                    hist_info["predyield"][chan][1] += error[0]*error[0]
+                with open("temp.txt", "a") as mc_file:
+                    mc_file.write("\nYield for %s in channel %s is %0.3f $pm$ %0.3f" % 
+                            (plot_group, chan, integral, error[0]))
             path = "/cms/kdlong" if "hep.wisc.edu" in os.environ['HOSTNAME'] else \
                 "/afs/cern.ch/user/k/kelong/work"
             config_factory = ConfigHistFactory(
@@ -97,8 +174,15 @@ def main():
             )
             scale_fac = 1
             scale = False
+            error = array.array('d', [0])
+
+            integral = central_hist.IntegralAndError(0, hist.GetNbinsX(), error)
+            hist_info[plot_group]["total"] = (integral, error[0])
+            if "data" not in plot_group and plot_group != "EW-WZjj":
+                hist_info["predyield"]["total"][0] += integral
+                hist_info["predyield"]["total"][1] += error[0]*error[0]
             with open("temp.txt", "a") as mc_file:
-                mc_file.write("\nYield for %s is %0.2f" % (plot_group, central_hist.Integral()))
+                mc_file.write("\nCombined yield for %s is %0.3f $pm$ %0.3f" % (plot_group, integral, error[0]))
             
             config_factory.setHistAttributes(central_hist, branch, plot_group)
             
@@ -135,6 +219,8 @@ def main():
                 text_box.Draw()
                 ROOT.SetOwnership(text_box, False)
 
+        hist_info["predyield"]["total"][1] = math.sqrt(hist_info["predyield"]["total"][1])
+        makeLogFile(channels, hist_info, args)
         helper.savePlot(canvas, plot_path, html_path, plot_name, True, args)
         makeSimpleHtml.writeHTML(html_path.replace("/plots",""), args.selection)
 
