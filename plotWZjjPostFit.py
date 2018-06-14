@@ -128,7 +128,13 @@ def main():
 
     channels = args.channels.split(",")
     hist_info = {}
-    hist_info["predyield"] = {"total" : [0,0], "eee" : [0,0], "eem" : [0,0], "emm" : [0,0], "mmm" : [0,0]}
+    hist_info["predyield"] = OrderedDict({"mmm" : [0,0],
+        "emm" : [0,0],
+        "eem" : [0,0],
+        "eee" : [0,0],
+        "total" : [0,0],
+        }
+    )
     for branch in args.branches.split(","):
         with open("temp.txt", "w") as mc_file:
             mc_file.write(meta_info)
@@ -145,7 +151,13 @@ def main():
         if not args.no_data:
             plot_groups.append("data")
         for i, plot_group in enumerate(plot_groups):
-            hist_info[plot_group] = {"total" : (0,0), "eee" : (0,0), "eem" : (0,0), "emm" : (0,0), "mmm" : (0,0)}
+            hist_info[plot_group] = OrderedDict({"mmm" : [0,0],
+                "emm" : [0,0],
+                "eem" : [0,0],
+                "eee" : [0,0],
+                "total" : [0,0],
+                }
+            )
             isSignal = False
             central_hist = 0
             for chan in channels:
@@ -238,6 +250,8 @@ def main():
                 text_box.Draw()
                 ROOT.SetOwnership(text_box, False)
 
+        for chan in channels:
+            hist_info["predyield"][chan][1] = math.sqrt(hist_info["predyield"][chan][1])
         hist_info["predyield"]["total"][1] = math.sqrt(hist_info["predyield"]["total"][1])
         makeLogFile(channels, hist_info, args)
         helper.savePlot(canvas, plot_path, html_path, plot_name, True, args)
