@@ -21,16 +21,20 @@ def getMonteCarloStack(name, cutflow_maker, filelist, unc, scale_facs, hist_file
     return hist_stack
 
 def getFormattedYieldAndError(hist, bin_num, sigfigs):
-    format_string = "%.{sigfigs}g".format(sigfigs=sigfigs)
+    format_string = "%.{sigfigs}f".format(sigfigs=sigfigs)
+    if "data" in hist.GetName():
+        format_string = "%i"
     result = format_string % hist.GetBinContent(bin_num)
 
-    error_digits = 0
+    error_digits = 1
     error_string = " $\pm$ %i"
     if len(result.split(".")) == 2:
         error_digits = len(result.split(".")[1])
         error_string = " $\pm$ %.{digits}f".format(digits=error_digits)
     error = round(hist.GetBinError(bin_num), error_digits)
 
+    if "data" in hist.GetName():
+        return result
     return result + (error_string % error)
 
 def makeLogFile(channels, hist_stack, data_hist, signal_stack):
@@ -51,6 +55,20 @@ def makeLogFile(channels, hist_stack, data_hist, signal_stack):
 
     formatted_names = { "wz-powheg" : "WZ (POWHEG)",
         "wz-mgmlm" : "WZ (MG MLM)",
+        "wz3lnu-mgmlm-0j" : "WZ+0j (MG MLM)",
+        "wz3lnu-mgmlm-1j" : "WZ+1j (MG MLM)",
+        "wz3lnu-mgmlm-2j" : "WZ+2j (MG MLM)",
+        "wz3lnu-mgmlm-3j" : "WZ+3j (MG MLM)",
+        "chargedHiggsWZ-m300" :  "m_{H^{\pm}} = 300",
+        "chargedHiggsWZ-m400" :  "m_{H^{\pm}} = 400",
+        "chargedHiggsWZ-m500" :  "m_{H^{\pm}} = 500",
+        "chargedHiggsWZ-m600" :  "m_{H^{\pm}} = 600",
+        "chargedHiggsWZ-m700" :  "m_{H^{\pm}} = 700",
+        "chargedHiggsWZ-m800" :  "m_{H^{\pm}} = 800",
+        "chargedHiggsWZ-m900" :  "m_{H^{\pm}} = 900",
+        "chargedHiggsWZ-m1000" : "m_{H^{\pm}} = 1000",
+        "chargedHiggsWZ-m1500" : "m_{H^{\pm}} = 1500",
+        "chargedHiggsWZ-m2000" : "m_{H^{\pm}} = 2000",
         "wzjj-ewk" : "WZjj EWK",
         "wzjj-vbfnlo" : "WZjj EWK (VBFNLO)",
         "nonprompt" : "Nonprompt",
@@ -77,13 +95,13 @@ def makeLogFile(channels, hist_stack, data_hist, signal_stack):
     if data_hist:
         hists.Add(data_hist)
     
-    sigfigs = 3 if not data_hist else max(len(str(int(data_hist.GetBinContent(1)))), 3)
+    sigfigs = 0 if not data_hist else 1
     for hist in hists:
         if hist.GetName() not in signal_names and "data" not in hist.GetName():
             hist_allbackground.Add(hist)
         for i, chan in enumerate(channels):
             # Channels should be ordered the same way as passed to the histogram
-            # This bin 0 is the underflow, bin 1 is total, and bin 2
+            # Thus bin 0 is the underflow, bin 1 is total, and bin 2
             # is the first bin with channel content (mmm/emm/eem/eee by default)
             yield_info[chan] = getFormattedYieldAndError(hist, i+2, sigfigs)
         yield_info["Total Yield"] = getFormattedYieldAndError(hist, 1, sigfigs)

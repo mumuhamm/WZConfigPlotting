@@ -124,7 +124,10 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
             ratioHist.SetMarkerSize(0)
             ratioHist.SetMarkerColor(ratioHist.GetLineColor())
             ratioHist.SetFillColor(ratioHist.GetLineColor())
-            drawOpt += " E2"
+            ratioHist.SetLineStyle(1)
+            #ratioHist.SetBinErrorOption(ROOT.TH1.kPoisson)
+            #drawOpt += " E2"
+            #drawOpt += " hist"
         else:
             drawOpt += " e0"
         ratioHist.Draw(drawOpt)

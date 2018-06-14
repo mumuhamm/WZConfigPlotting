@@ -27,7 +27,7 @@ class HistProducer(object):
             lumi *= 1000
         elif units != 'fb-1':
             raise ValueError("Invalid luminosity units! Options are 'pb-1' and 'fb-1'")
-        self.lumi = lumi if lumi > 0 else 1/self.getCrossSection()
+        self.lumi = lumi if lumi > 0 else 1
 
     @abc.abstractmethod
     def produce(self, input): 

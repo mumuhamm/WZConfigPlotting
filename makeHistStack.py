@@ -21,8 +21,6 @@ def getComLineArgs():
     parser.add_argument("-s", "--selection", type=str, required=True,
                         help="Specificy selection level to run over")
     parser.add_argument("--latex", action='store_true', help='table in latex format')
-    parser.add_argument("--rebin", type=int, default=0,
-                        help="Rebin (integer)")
     parser.add_argument("-r", "--object_restrict", type=str, default="",
                         help="Use modified object file")
     parser.add_argument("-b", "--branches", type=str, default="all",
@@ -94,6 +92,8 @@ def getStacked(name, config_factory, selection, filelist, branch_name, channels,
         else:
             hist = helper.getConfigHistFromFile(hist_file, config_factory, plot_set, 
                         selection, branch_name, channels, luminosity, addOverflow=addOverflow, rebin=rebin)
+        if luminosity < 0:
+            hist.Scale(1/hist.Integral())
         raw_events = hist.GetEntries() - 1
         hist_stack.Add(hist)
         error = array.array('d', [0])
@@ -148,13 +148,13 @@ def main():
                 continue
             if not args.no_data:
                 if args.hist_file == "":
-                    data_hist = helper.getConfigHistFromTree(config_factory, "data_2016", args.selection, 
                     #data_hist = helper.getConfigHistFromTree(config_factory, "data_all", args.selection, 
+                    data_hist = helper.getConfigHistFromTree(config_factory, "data_2016", args.selection, 
                             branch_name, args.channels, args.blinding, 1, not args.no_overflow, args.rebin, 
                             cut_string)
                 else:
-                    data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_all", 
-                    #data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_2016", 
+                    #data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_all", 
+                    data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_2016", 
                             args.selection, branch_name, args.channels,addOverflow=(not args.no_overflow), rebin=args.rebin)
                 with open("temp.txt", "a") as events_log_file:
                     events_log_file.write("\nNumber of events in data: %i\n" % data_hist.Integral())
