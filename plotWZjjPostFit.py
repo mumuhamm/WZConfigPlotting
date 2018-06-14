@@ -20,6 +20,8 @@ def getComLineArgs():
     parser = UserInput.getDefaultParser()
     parser.add_argument("-s", "--selection", type=str, required=True,
                         help="Specificy selection level to run over")
+    parser.add_argument("--backgroundOnly", action='store_true',
+                        help="Use background only fit rather than s+b")
     parser.add_argument("--noCR", action='store_true',
                         help="Remove control region from fit distribution")
     parser.add_argument("-b", "--branches", type=str, default="all",
@@ -66,24 +68,37 @@ def main():
             mc_file.write("Selection: %s" % args.selection)
             mc_file.write("\nPlotting branch: %s\n" % branch)
 
-        plot_name = "mjj_etajj_unrolled" if args.noCR else "mjj_etajj_unrolled_wCR"
+        plot_name = branch 
         if args.append_to_name:
             plot_name += "_" + args.append_to_name
-        hist_stack = ROOT.THStack("stack_postfit", "stack_postfile")
+        hist_stack = ROOT.THStack("stack_postfit", "stack_postfit")
+        signal_stack = ROOT.THStack("signalstack_prefit", "sig_prefit")
         data_hist = 0
         plot_groups = args.files_to_plot.split(",")
         if not args.no_data:
             plot_groups.append("data")
         for i, plot_group in enumerate(plot_groups):
+            isSignal = False
             central_hist = 0
             for chan in channels:
-                hist_name = "/".join(["shapes_fit_s", chan, plot_group])
+                folder = "shapes_fit_b" if args.backgroundOnly else "shapes_fit_s"
+                if "aqgc" in plot_group:
+                    isSignal = True
+                    folder = "shapes_prefit"
+                hist_name = "/".join([folder, chan, plot_group if plot_group != "wzjj-ewk_filled" else "EW-WZjj"])
 
                 hist = rtfile.Get(hist_name)
                 if hist.InheritsFrom("TGraph"):
                     hist = histFromGraph(hist, "_".join([plot_group, chan]))
                 if args.noCR:
                     hist = removeControlRegion(hist)
+                if "MTWZ" in plot_name:
+                    binning = array.array('d', [0,100,200,300,400,500,700,1000,1500,2000]) 
+                    tmphist = ROOT.TH1D(hist_name, hist_name, len(binning)-1, binning)
+                    for i in range(hist.GetNbinsX()+1):
+                        tmphist.SetBinContent(i, hist.GetBinContent(i))
+                        tmphist.SetBinError(i, hist.GetBinError(i))
+                    hist = tmphist
                 if not central_hist:
                     central_hist = hist
                     central_hist.SetName(plot_group)
@@ -102,14 +117,18 @@ def main():
             
             config_factory.setHistAttributes(central_hist, branch, plot_group)
             
-            if plot_group != "data":
+            if plot_group != "data" and not isSignal:
                 hist_stack.Add(central_hist)
+            elif isSignal:
+                signal_stack.Add(central_hist)
             else:
                 data_hist = central_hist
                 data_hist.Sumw2(False)
                 data_hist.SetBinErrorOption(ROOT.TH1.kPoisson)
-        canvas = helper.makePlots([hist_stack], [data_hist], plot_name, args,)
-        if "CR" not in plot_name:
+        if not signal_stack.GetHists():
+            signal_stack = 0
+        canvas = helper.makePlots([hist_stack], [data_hist], plot_name, args, signal_stacks=[signal_stack])
+        if "CR" not in plot_name and "unrolled" in plot_name:
             ratioPad = canvas.GetListOfPrimitives().FindObject("ratioPad")
             stackPad = canvas.GetListOfPrimitives().FindObject("stackPad")
             ratiohist = ratioPad.GetListOfPrimitives().FindObject('%s_canvas_central_ratioHist' % plot_name)

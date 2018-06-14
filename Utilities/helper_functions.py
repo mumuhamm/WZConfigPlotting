@@ -117,9 +117,11 @@ def makePlot(hist_stack, data_hist, name, args, signal_stack=0, same=""):
             hists[0].GetXaxis().GetTitle())
     #first_stack = signal_stack if stack_signal else hist_stack
     if data_hist:
-        data_hist.Sumw2(False)
-        data_hist.SetBinErrorOption(ROOT.TH1.kPoisson)
-        data_hist.Draw("e0 p0 same")
+        print 
+        if not "yield" in name.lower():
+            data_hist.Sumw2(False)
+            data_hist.SetBinErrorOption(ROOT.TH1.kPoisson)
+        data_hist.Draw("e0 same")
     first_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
     first_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
     first_stack.GetYaxis().SetTitle(
@@ -127,9 +129,9 @@ def makePlot(hist_stack, data_hist, name, args, signal_stack=0, same=""):
 
     if not args.no_ratio and float(ROOT.gROOT.GetVersion().split("/")[0]) > 6.07:
         # Remove first bin label to avoid overlap of canvases
-        if not args.logy:
-            first_stack.GetHistogram().SetMinimum(0)
-        first_stack.GetYaxis().ChangeLabel(1, -1.0, 0)
+        if hists[0].GetMinimum() == 0.0:
+            first_stack.GetYaxis().ChangeLabel(1, -1.0, 0)
+        print hists[0].GetMinimum() 
     first_stack.GetHistogram().GetXaxis().SetTitle(
         hists[0].GetXaxis().GetTitle())
     first_stack.GetHistogram().SetLabelSize(0.04)

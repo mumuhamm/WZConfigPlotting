@@ -148,8 +148,8 @@ def main():
                 continue
             if not args.no_data:
                 if args.hist_file == "":
-                    data_hist = helper.getConfigHistFromTree(config_factory, "data_2016", args.selection, 
                     #data_hist = helper.getConfigHistFromTree(config_factory, "data_all", args.selection, 
+                    data_hist = helper.getConfigHistFromTree(config_factory, "data_2016", args.selection, 
                             branch_name, args.channels, args.blinding, 1, not args.no_overflow, args.rebin, 
                             cut_string)
                 else:
