@@ -72,17 +72,22 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=[0], errors=[])
     if args.extra_text != "":
         lines = [x.strip() for x in args.extra_text.split(";")]
         ymax = coords[3]
-        box_size = 0.05*len(lines)
+        box_size = 0.05*len(lines)+0.05
         if args.extra_text_above:
             ymax = coords[1] 
             coords[1] -= box_size
             coords[3] -= box_size
+        ymax = coords[1]-0.02
+        print ymax
         ymin = ymax - box_size
-        text_box = ROOT.TPaveText(coords[0], ymin, coords[2], ymax, "NDCnb")
+        xcoords = [0.35, 0.35+width*1.1]
+        print xcoords
+        text_box = ROOT.TPaveText(xcoords[0], ymin, xcoords[1], ymax, "NDCnb")
         text_box.SetFillColor(0)
         text_box.SetFillStyle(0)
         text_box.SetLineColor(0)
         text_box.SetTextFont(42)
+        text_box.SetTextFont(62)
         for i, line in enumerate(lines):
             text_box.AddText(line)
         text_box.Draw()

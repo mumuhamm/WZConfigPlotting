@@ -88,6 +88,7 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
     ratioHists = data_list if compareData else (stack_hists+signal_hists)[1:]
     ratioHists = [h.Clone(h.GetName()+"_ratioHist") for h in ratioHists]
     centralRatioHist = stack_hists[0].Clone(name+'_central_ratioHist')
+    alternativeRatioHist = signal_hists[0].Clone(name+'_alternative_ratioHist')
     if compareData:
         errors = 0
         for primitive in stackPad.GetListOfPrimitives():
@@ -95,6 +96,7 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
                 errors = primitive
         if errors:
             centralRatioHist = errors.Clone(centralRatioHist.GetName())
+            map(alternativeRatioHist.Add, stack_hists[1:])
         elif len(stack_hists) > 1:
             map(centralRatioHist.Add, stack_hists[1:])
     centralHist = centralRatioHist.Clone("temp")
@@ -126,10 +128,13 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
                 ratioHist.SetBinError(i, tmpRatio.GetBinError(i)/denom)
             ratioHist.Sumw2()
             del tmpRatio
+    alternativeHist = alternativeRatioHist.Clone("tmpAlt")
+    alternativeRatioHist.Divide(centralRatioHist)
     for i in range(centralRatioHist.GetNbinsX()+2):
         denom = centralHist.GetBinContent(i)
         if denom == 0: continue
         centralRatioHist.SetBinError(i, centralHist.GetBinError(i)/denom)
+        alternativeRatioHist.SetBinError(i, alternativeHist.GetBinError(i)/denom)
         centralRatioHist.SetBinContent(i, 1.)
     stack_hists[0].GetXaxis().Copy(centralRatioHist.GetXaxis())
     stack_hists[0].GetXaxis().Copy(centralRatioHist.GetXaxis())
@@ -142,7 +147,11 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
     centralRatioHist.GetYaxis().SetNdivisions(003)
     centralRatioHist.GetYaxis().SetTitleSize(centralRatioHist.GetYaxis().GetTitleSize()*0.8)
     centralRatioHist.GetYaxis().SetLabelSize(centralRatioHist.GetYaxis().GetLabelSize()*0.8)
+    alternativeRatioHist.SetFillColor(alternativeHist.GetLineColor())
+    alternativeRatioHist.SetFillStyle(3445)
+    alternativeRatioHist.SetMarkerSize(0)
     centralRatioHist.Draw("E2")
+    alternativeRatioHist.Draw("E2 same")
     for ratioHist in ratioHists:
         drawOpt = "same"
         if not compareData:
