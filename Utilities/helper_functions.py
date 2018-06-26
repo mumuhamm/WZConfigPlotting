@@ -18,7 +18,7 @@ from IPython import embed
 
 #logging.basicConfig(level=logging.DEBUG)
 
-def makePlots(hist_stacks, data_hists, name, args, signal_stacks=[0]):
+def makePlots(hist_stacks, data_hists, name, args, signal_stacks=[0], errors=[]):
     canvas_dimensions = [800, 800] if "unrolled" not in name else [1200, 800]
     canvas = ROOT.TCanvas("%s_canvas" % name, name, *canvas_dimensions) 
     first = True
@@ -41,9 +41,16 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=[0]):
     coords = [xcoords[0], ycoords[0], xcoords[1], ycoords[1]]
     
     if "none" not in args.uncertainties:
-        histErrors = getHistErrors(hist_stacks[0], args.nostack)
+        histErrors = getHistErrors(hist_stacks[0], args.nostack) if not errors else errors
         for error_hist in histErrors:
             ROOT.SetOwnership(error_hist, False)
+            error_hist.SetFillStyle(3345)
+            error_hist.SetLineWidth(1)
+            error_hist.SetMarkerSize(0)
+            error_hist.SetLineColor(ROOT.kBlack)
+            error_hist.SetFillColor(ROOT.kBlack)
+            ROOT.gStyle.SetHatchesLineWidth(1)
+            ROOT.gStyle.SetHatchesSpacing(0.75)
             error_hist.Draw("same e2")
             error_title = "Stat. Unc."
             if "all" in args.uncertainties:
@@ -158,7 +165,8 @@ def getHistErrors(hist_stack, separate):
 def getPrettyLegend(hist_stack, data_hist, signal_stack, error_hists, coords):
     hists = hist_stack.GetHists()
     if signal_stack != 0:
-        hists += signal_stack.GetHists()
+        #hists += signal_stack.GetHists()
+        hists = signal_stack.GetHists() + hists
     legend = ROOT.TLegend(coords[0], coords[1], coords[2], coords[3])
     ROOT.SetOwnership(legend, False)
     legend.SetName("legend")

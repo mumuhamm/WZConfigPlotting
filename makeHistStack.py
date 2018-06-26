@@ -174,6 +174,7 @@ def main():
         name = branch.replace("+","_")
         plot_name = name if args.append_to_name == "" else "_".join([name, args.append_to_name])
 
+        #embed()
         canvas = helper.makePlots(hist_stacks, data_hists, name, args, signal_stacks)
         helper.savePlot(canvas, plot_path, html_path, plot_name, True, args)
         makeSimpleHtml.writeHTML(html_path.replace("/plots",""), args.selection)

@@ -61,6 +61,7 @@ def makeLogFile(channels, hist_info, args):
         "QCD-WZjj" : "QCD-WZjj",
         "EW-WZjj" : "EW-WZjj",
         "wzjj-ewk" : "WZjj EWK",
+        "wzjj-ewk_filled" : "WZjj EWK",
         "wzjj-vbfnlo" : "WZjj EWK (VBFNLO)",
         "nonprompt" : "Nonprompt",
         "top-ewk" : "t+V/VVV",
@@ -77,6 +78,8 @@ def makeLogFile(channels, hist_info, args):
 
     sigfigs = 3
     for name, entry in hist_info.iteritems():
+        if "aqgc" in name:
+            continue
         for i, chan in enumerate(channels):
             # Channels should be ordered the same way as passed to the histogram
             # This bin 0 is the underflow, bin 1 is total, and bin 2
@@ -111,6 +114,14 @@ def removeControlRegion(hist):
     for i in range(2, hist.GetNbinsX()+1):
         new_hist.SetBinContent(i-1, hist.GetBinContent(i))
         new_hist.SetBinError(i-1, hist.GetBinError(i))
+    return new_hist
+
+def rebinMTWZ(hist, hist_name):
+    binning = array.array('d', [0,100,200,300,400,500,700,1000,1500,2000]) 
+    new_hist = ROOT.TH1D(hist_name, hist_name, len(binning)-1, binning)
+    for i in range(hist.GetNbinsX()+1):
+        new_hist.SetBinContent(i, hist.GetBinContent(i))
+        new_hist.SetBinError(i, hist.GetBinError(i))
     return new_hist
 
 def main():
@@ -173,12 +184,7 @@ def main():
                 if args.noCR:
                     hist = removeControlRegion(hist)
                 if "MTWZ" in plot_name:
-                    binning = array.array('d', [0,100,200,300,400,500,700,1000,1500,2000]) 
-                    tmphist = ROOT.TH1D(hist_name, hist_name, len(binning)-1, binning)
-                    for i in range(hist.GetNbinsX()+1):
-                        tmphist.SetBinContent(i, hist.GetBinContent(i))
-                        tmphist.SetBinError(i, hist.GetBinError(i))
-                    hist = tmphist
+                    hist = rebinMTWZ(hist, hist_name)
                 if not central_hist:
                     central_hist = hist
                     central_hist.SetName(plot_group)
@@ -187,9 +193,6 @@ def main():
                 error = array.array('d', [0])
                 integral = hist.IntegralAndError(0, hist.GetNbinsX(), error)
                 hist_info[plot_group][chan] = (integral, error[0])
-                if "data" not in plot_group and plot_group != "EW-WZjj":
-                    hist_info["predyield"][chan][0] += integral
-                    hist_info["predyield"][chan][1] += error[0]*error[0]
                 with open("temp.txt", "a") as mc_file:
                     mc_file.write("\nYield for %s in channel %s is %0.3f $pm$ %0.3f" % 
                             (plot_group, chan, integral, error[0]))
@@ -203,11 +206,8 @@ def main():
             scale = False
             error = array.array('d', [0])
 
-            integral = central_hist.IntegralAndError(0, hist.GetNbinsX(), error)
+            integral = central_hist.IntegralAndError(0, central_hist.GetNbinsX(), error)
             hist_info[plot_group]["total"] = (integral, error[0])
-            if "data" not in plot_group and plot_group != "EW-WZjj":
-                hist_info["predyield"]["total"][0] += integral
-                hist_info["predyield"]["total"][1] += error[0]*error[0]
             with open("temp.txt", "a") as mc_file:
                 mc_file.write("\nCombined yield for %s is %0.3f $pm$ %0.3f" % (plot_group, integral, error[0]))
             
@@ -223,7 +223,32 @@ def main():
                 data_hist.SetBinErrorOption(ROOT.TH1.kPoisson)
         if not signal_stack.GetHists():
             signal_stack = 0
-        canvas = helper.makePlots([hist_stack], [data_hist], plot_name, args, signal_stacks=[signal_stack])
+        error_hist = 0 
+        folder = "shapes_fit_b" if args.backgroundOnly else "shapes_fit_s"
+        for chan in channels:
+            error_chan = rtfile.Get("/".join([folder, chan, "total_background"]))
+            if args.noCR:
+                error_chan = removeControlRegion(error_chan)
+            if "MTWZ" in plot_name:
+                error_chan = rebinMTWZ(error_chan, "tmp")
+            error = array.array('d', [0])
+            integral = error_chan.IntegralAndError(0, error_chan.GetNbinsX(), error)
+            hist_info["predyield"][chan] = (integral, error[0])
+
+        bkerror_hist = rtfile.Get("/".join([folder, "total_background"]))
+        print bkerror_hist.Integral()
+        print bkerror_hist.Integral(2, bkerror_hist.GetNbinsX()+1)
+        error = array.array('d', [0])
+        integral = bkerror_hist.IntegralAndError(1+args.noCR, bkerror_hist.GetNbinsX(), error)
+        hist_info["predyield"]["total"] = (integral, error[0])
+        error_hist = rtfile.Get("/".join([folder, "total_overall"]))
+        if args.noCR:
+            error_hist = removeControlRegion(error_hist)
+        if "MTWZ" in plot_name:
+            error_hist = rebinMTWZ(error_hist, "postfit_errors")
+
+        canvas = helper.makePlots([hist_stack], [data_hist], plot_name, args, signal_stacks=[signal_stack],
+                        errors=[error_hist] if error_hist else [])
         if "CR" not in plot_name and "unrolled" in plot_name:
             ratioPad = canvas.GetListOfPrimitives().FindObject("ratioPad")
             stackPad = canvas.GetListOfPrimitives().FindObject("stackPad")
@@ -250,9 +275,6 @@ def main():
                 text_box.Draw()
                 ROOT.SetOwnership(text_box, False)
 
-        for chan in channels:
-            hist_info["predyield"][chan][1] = math.sqrt(hist_info["predyield"][chan][1])
-        hist_info["predyield"]["total"][1] = math.sqrt(hist_info["predyield"]["total"][1])
         makeLogFile(channels, hist_info, args)
         helper.savePlot(canvas, plot_path, html_path, plot_name, True, args)
         makeSimpleHtml.writeHTML(html_path.replace("/plots",""), args.selection)

@@ -96,12 +96,10 @@ def main():
                 args.selection.split("_")[0],
             )
             scale_fac = 1
-            scale = False
+            scale = True
             # Normalize to data in CR
-            if file_name == "wz-mgmlm":
-                scale_fac = (191-(28.78+3.84+18.35+22.27))/144.82
-            elif file_name in ["wz", "wz_standalone"]:
-                scale_fac = (191-(28.78+3.84+18.35+22.27))/183.25
+            if file_name in ["wz", "wz_standalone"]:
+                scale_fac = 0.8224 
             elif file_name in ["wz-powheg", "wz-powheg_standalone"]:
                 scale_fac =(191-(28.78+3.84+18.35+22.27))/139.43
             if scale:
@@ -127,7 +125,7 @@ def main():
             down_hist.SetLineWidth(2)
             up_hist.SetLineStyle(5)
             down_hist.SetLineStyle(5)
-            down_hist.SetLineColor(ROOT.TColor.GetColor("#980000"))
+            #down_hist.SetLineColor(ROOT.TColor.GetColor("#980000"))
 
             if "wzQCDModeling" in up_hist.GetName():
                 print "Oui oui"

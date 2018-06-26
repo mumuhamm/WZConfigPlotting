@@ -83,24 +83,49 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
     canvas.SetName(name)
     ratioPad.cd()
     ratioPad.SetBottomMargin(oldBottomMargin/.3)
-    ratioPad.SetTopMargin(0.)
+    #ratioPad.SetTopMargin(0.03)
+    ratioPad.SetTopMargin(0.05)
     ratioHists = data_list if compareData else (stack_hists+signal_hists)[1:]
     ratioHists = [h.Clone(h.GetName()+"_ratioHist") for h in ratioHists]
     centralRatioHist = stack_hists[0].Clone(name+'_central_ratioHist')
     if compareData:
-        if len(stack_hists) > 1:
+        errors = 0
+        for primitive in stackPad.GetListOfPrimitives():
+            if "errors" in primitive.GetName() and primitive.InheritsFrom("TH1"):
+                errors = primitive
+        if errors:
+            centralRatioHist = errors.Clone(centralRatioHist.GetName())
+        elif len(stack_hists) > 1:
             map(centralRatioHist.Add, stack_hists[1:])
     centralHist = centralRatioHist.Clone("temp")
     centralRatioHist.SetFillColor(ROOT.TColor.GetColor("#e4e5e5"))
+    centralRatioHist.SetFillStyle(1001)
     centralRatioHist.SetMarkerSize(0)
-    for ratioHist in ratioHists:
-        tmpRatio = ratioHist.Clone("tempRatio")
+    if compareData:
+        ratioHist = ratioHists[0]
+        tmpData = ratioHist.Clone("tmp")
         ratioHist.Divide(centralHist)
-        for i in range(ratioHist.GetNbinsX()+2):
-            denom = tmpRatio.GetBinContent(i)
-            if denom == 0: continue
-            ratioHist.SetBinError(i, tmpRatio.GetBinError(i)/denom)
-        del tmpRatio
+        ratioGraph = ROOT.TGraphAsymmErrors(ratioHist)
+        ratioHists = [ratioGraph]
+        for i in range(1, tmpData.GetNbinsX()+2):
+            if centralRatioHist.GetBinContent(i) == 0: 
+                continue
+            errorUp = (tmpData.GetBinContent(i)+tmpData.GetBinErrorUp(i))/centralRatioHist.GetBinContent(i)
+            errorUp -= ratioHist.GetBinContent(i) 
+            errorDown = (tmpData.GetBinContent(i)-tmpData.GetBinErrorLow(i))/centralRatioHist.GetBinContent(i)
+            errorDown = ratioHist.GetBinContent(i) - errorDown
+            ratioGraph.SetPointEYhigh(i-1, errorUp)
+            ratioGraph.SetPointEYlow(i-1, errorDown)
+    else:
+        for ratioHist in ratioHists:
+            tmpRatio = ratioHist.Clone("tempRatio")
+            ratioHist.Divide(centralHist)
+            for i in range(ratioHist.GetNbinsX()+2):
+                denom = tmpRatio.GetBinContent(i)
+                if denom == 0: continue
+                ratioHist.SetBinError(i, tmpRatio.GetBinError(i)/denom)
+            ratioHist.Sumw2()
+            del tmpRatio
     for i in range(centralRatioHist.GetNbinsX()+2):
         denom = centralHist.GetBinContent(i)
         if denom == 0: continue
@@ -125,17 +150,16 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
             ratioHist.SetMarkerColor(ratioHist.GetLineColor())
             ratioHist.SetFillColor(ratioHist.GetLineColor())
             ratioHist.SetLineStyle(1)
-            #ratioHist.SetBinErrorOption(ROOT.TH1.kPoisson)
             #drawOpt += " E2"
             #drawOpt += " hist"
         else:
-            drawOpt += " e0"
+            drawOpt += " PZE0"
         ratioHist.Draw(drawOpt)
     stacks = filter(lambda p: type(p) is ROOT.THStack, stackPad.GetListOfPrimitives())
     for stack in stacks:
         stack.GetXaxis().SetTitle("")
         stack.GetXaxis().SetLabelOffset(999)
-    xaxis = ratioHists[0].GetXaxis()
+    xaxis = centralRatioHist.GetXaxis()
     line = ROOT.TLine(xaxis.GetBinLowEdge(xaxis.GetFirst()), 1, xaxis.GetBinUpEdge(xaxis.GetLast()), 1)
     #line = ROOT.TLine(xaxis.GetBinLowEdge(4), 1, xaxis.GetBinUpEdge(26), 1)
     line.SetLineStyle(ROOT.kDotted)
@@ -144,9 +168,9 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
     stackPad.Modified()
     recursePrimitives(ratioPad, fixFontSize, 1/0.3)
     if "unrolled" in name:
-        centralRatioHist.GetXaxis().SetLabelSize(0.175)
-        centralRatioHist.GetXaxis().SetLabelOffset(0.03)
-        centralRatioHist.GetXaxis().SetTitleOffset(1.25)
+        xaxis.SetLabelSize(0.175)
+        xaxis.SetLabelOffset(0.03)
+        xaxis.SetTitleOffset(1.25)
     ratioPad.Modified()
     canvas.Update()
     ROOT.SetOwnership(stackPad, False)
@@ -155,6 +179,7 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
     for obj in ratioPad.GetListOfPrimitives():
         ROOT.SetOwnership(obj, False)
     ratioPad.GetListOfPrimitives().SetOwner(True)
+    ratioPad.RedrawAxis()
     canvas.cd()
     canvas.GetListOfPrimitives().SetOwner(True)
     return canvas
@@ -193,6 +218,8 @@ def getHistErrors(hist):
     histErrors.SetName(hist.GetName() + "_errors")
     histErrors.SetDirectory(0)
     if not histErrors.GetSumw2(): histErrors.Sumw2()
-    histErrors.SetFillStyle(3013)
-    histErrors.SetMarkerSize(0) 
+    histErrors.SetFillStyle(3345)
+    histErrors.SetLineWidth(1)
+    ROOT.gStyle.SetHatchesLineWidth(1)
+    ROOT.gStyle.SetHatchesSpacing(0.75)
     return histErrors
