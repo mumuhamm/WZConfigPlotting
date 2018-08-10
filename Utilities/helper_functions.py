@@ -67,8 +67,8 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=[0], errors=[])
         ROOT.dotrootImport('kdlong/CMSPlotDecorations')
         scale_label = "Normalized to Unity" if args.luminosity < 0 else \
             "%0.1f fb^{-1}" % args.luminosity
-        ROOT.CMSlumi(canvas, 0, 11, "%s (13 TeV)" % scale_label,
-                "Preliminary Simulation" if args.simulation else "Preliminary")
+        ROOT.CMSlumi(canvas, 0, 11, "%s (13 TeV)" % scale_label,"")
+                #"Preliminary Simulation" if args.simulation else "Preliminary")
     if args.extra_text != "":
         lines = [x.strip() for x in args.extra_text.split(";")]
         ymax = coords[3]
@@ -552,8 +552,8 @@ def getPlotPaths(selection, folder_name, write_log_file=False):
         storage_area = "/nfs_scratch/kdlong"
         html_area = "/afs/hep.wisc.edu/home/kdlong/public_html"
     else:
-        storage_area = "/eos/user/k/kelong"
-        html_area = "/afs/cern.ch/user/k/kelong/www"
+        storage_area = "/eos/user/k/%s" % os.environ["USER"]
+        html_area = "/afs/cern.ch/user/k/%s/www" % os.environ["USER"]
     base_dir = "%s/DibosonAnalysisData/PlottingResults" % storage_area
     plot_path = "/".join([base_dir, selection] +
        (['{:%Y-%m-%d}'.format(datetime.datetime.today()),

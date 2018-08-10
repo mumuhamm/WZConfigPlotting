@@ -196,8 +196,9 @@ def main():
                 with open("temp.txt", "a") as mc_file:
                     mc_file.write("\nYield for %s in channel %s is %0.3f $pm$ %0.3f" % 
                             (plot_group, chan, integral, error[0]))
-            path = "/cms/kdlong" if "hep.wisc.edu" in os.environ['HOSTNAME'] else \
-                "/afs/cern.ch/user/k/kelong/work"
+            path = "/cms/USER" if "hep.wisc.edu" in os.environ['HOSTNAME'] else \
+                "/afs/cern.ch/user/k/USER/work"
+            path = path.replace("USER", os.environ["USER"])
             config_factory = ConfigHistFactory(
                 "%s/AnalysisDatasetManager" % path,
                 args.selection.split("_")[0],
@@ -224,28 +225,29 @@ def main():
         if not signal_stack.GetHists():
             signal_stack = 0
         error_hist = 0 
+        bkerror_hist = 0
         folder = "shapes_fit_b" if args.backgroundOnly else "shapes_fit_s"
         for chan in channels:
-            error_chan = rtfile.Get("/".join([folder, chan, "total_background"]))
+            bkerror_chan = rtfile.Get("/".join([folder, chan, "total_background"]))
+            error_chan = rtfile.Get("/".join([folder, chan, "total"]))
             if args.noCR:
                 error_chan = removeControlRegion(error_chan)
+                bkerror_chan = removeControlRegion(bkerror_chan)
             if "MTWZ" in plot_name:
                 error_chan = rebinMTWZ(error_chan, "tmp")
+                bkerror_chan = rebinMTWZ(bkerror_chan, "bktmp")
+            if not error_hist:
+                error_hist = error_chan.Clone("errors")
+            else:
+                error_hist.Add(error_chan)
             error = array.array('d', [0])
             integral = error_chan.IntegralAndError(0, error_chan.GetNbinsX(), error)
             hist_info["predyield"][chan] = (integral, error[0])
 
-        bkerror_hist = rtfile.Get("/".join([folder, "total_background"]))
-        print bkerror_hist.Integral()
-        print bkerror_hist.Integral(2, bkerror_hist.GetNbinsX()+1)
+        bkerror_hist = rtfile.Get("/".join([folder, "total_overall"]))
         error = array.array('d', [0])
         integral = bkerror_hist.IntegralAndError(1+args.noCR, bkerror_hist.GetNbinsX(), error)
         hist_info["predyield"]["total"] = (integral, error[0])
-        error_hist = rtfile.Get("/".join([folder, "total_overall"]))
-        if args.noCR:
-            error_hist = removeControlRegion(error_hist)
-        if "MTWZ" in plot_name:
-            error_hist = rebinMTWZ(error_hist, "postfit_errors")
 
         canvas = helper.makePlots([hist_stack], [data_hist], plot_name, args, signal_stacks=[signal_stack],
                         errors=[error_hist] if error_hist else [])
