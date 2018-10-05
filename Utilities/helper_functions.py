@@ -44,14 +44,12 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=[0], errors=[])
         histErrors = getHistErrors(hist_stacks[0], args.nostack) if not errors else errors
         for error_hist in histErrors:
             ROOT.SetOwnership(error_hist, False)
-            error_hist.SetFillStyle(3345)
             error_hist.SetLineWidth(1)
-            error_hist.SetMarkerSize(0)
-            error_hist.SetLineColor(ROOT.kBlack)
-            error_hist.SetFillColor(ROOT.kBlack)
             ROOT.gStyle.SetHatchesLineWidth(1)
             ROOT.gStyle.SetHatchesSpacing(0.75)
             error_hist.Draw("same e2")
+            signal_stack.Draw("same hist")
+            data_hist.Draw("e0 same")
             error_title = "Stat. Unc."
             if "all" in args.uncertainties:
                 error_title = "Stat.#oplusSyst."
@@ -155,8 +153,6 @@ def getHistErrors(hist_stack, separate):
             error_hist.SetLineColor(hist.GetLineColor())
             histErrors.append(error_hist)
         else:
-            error_hist.SetFillColor(ROOT.kBlack)
-            error_hist.SetLineColor(ROOT.kBlack)
             if len(histErrors) == 0:
                 histErrors.append(error_hist)
             else:
@@ -264,14 +260,14 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
                 state_hist_name = str("%s/%s_%s" % (name, branch_name, state))
                 if str(plot_group).lower() == "nonprompt":
                     state_hist_name = state_hist_name.replace(state, "Fakes_"+state)
-                args = [state_hist_name, addOverflow]
+                args = [state_hist_name, addOverflow, rebin]
             else:
                 chan = state.split("/")[0] if "ntuple" in state else ""
                 config_factory.setProofAliases(chan)
                 draw_expr = config_factory.getHistDrawExpr(branch_name, name, chan)
                 proof_name = "_".join([name, "%s#/%s" % (selection.replace("/", "_"), state)])
                 producer.setCutString(cut_string)
-                args = [draw_expr, proof_name, addOverflow]
+                args = [draw_expr, proof_name, addOverflow, rebin]
             
             try:
                 state_hist = producer.produce(*args)
@@ -307,12 +303,6 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
         raise ValueError("Invalid histogram %s for selection %s" % (branch_name, selection))
     if removeNegatives and "data" not in name:
         removeZeros(hist)
-    if rebin:
-        if len(rebin) == 1:
-            hist.Rebin(int(rebin[0]))
-        else:
-            bins = array.array('d', rebin)
-            hist = hist.Rebin(len(bins)-1, "", bins)
     return hist
 
 def getConfigHistFromFile(filename, config_factory, plot_group, selection, branch_name, channels,
@@ -340,6 +330,7 @@ def getConfigHistFromFile(filename, config_factory, plot_group, selection, branc
 
     bin_info = config_factory.getHistBinInfo(branch_name)
     states = channels.split(",")
+    print "OVERFLOW?", addOverflow
     hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, uncertainties, addOverflow, rebin)
     config_factory.setHistAttributes(hist, branch_name, plot_group)
 
@@ -368,88 +359,6 @@ def getConfigHistFromTree(config_factory, plot_group, selection, branch_name, ch
     hist_factory = getHistFactory(config_factory, selection, filelist, luminosity)
     bin_info = config_factory.getHistBinInfo(branch_name)
     
-    #if "data" in plot_group: 
-    #    for blind in blinding: 
-    #        if branch_name in blind:
-    #            cut_string = appendCut(cut_string, blind)
-#    scale_unc = False
-#    scalebins = [8,0,8]
-#    group_sum_hist = ROOT.TH1D(hist_name, hist_name, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
-#    no_weights = ["st-tchan-tbar","st-tchan-t","st-schan", "ggZZ4e", "ggZZ4m", "ggZZ2e2mu", "st-tw", "st-tbarw"]
-#
-#    if "scale" in uncertainties or uncertainties == "all":
-#        scale_unc = True
-#        scale_name = hist_name + "_lheWeights"
-#    original_cut_string = cut_string
-    
-    hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, trees, 
-            uncertainties, addOverflow, rebin, cut_string)
-    config_factory.setHistAttributes(hist, branch_name, plot_group)
-    return hist
-
-#    for name, entry in hist_info.iteritems():   
-#        log_info += "_"*80 + "\n"
-#        log_info += "Results for file %s in plot group %s\n" % (name, plot_group)
-#        sum_hist = group_sum_hist
-#        if scale_unc and name not in no_weights:
-#            sum_hist = ROOT.TH2D(scale_name, scale_name, 8, 0, 8, bin_info['nbins'], bin_info['xmin'], bin_info['xmax'])
-#        producer = entry["histProducer"]
-#        weight = config_factory.getPlotGroupWeight(plot_group)
-#        if weight != 1:
-#            producer.addWeight(weight)
-#        for tree in trees:
-#            state = tree.split("/")[0] if "ntuple" in tree else ""
-#            config_factory.setProofAliases(state)
-#            # Don't enter an infinite loop of adding aliases
-#            if cut_string == original_cut_string:
-#                cut_string = config_factory.hackInAliases(cut_string)
-#            if "WZxsec2016" in selection and not is_data and not no_scalefacs:
-#                scale_expr = getScaleFactorExpression(state, "medium", "tightW")
-#                weighted_cut_string = appendCut(cut_string, scale_expr)
-#            else:
-#                weighted_cut_string = cut_string 
-#            draw_expr = config_factory.getHistDrawExpr(branch_name, name, state)
-#            print "NAME IS", name
-#            if scale_unc and name not in no_weights:
-#                draw_expr = config_factory.getHist2DWeightrawExpr(branch_name, name, state, scalebins)
-#                weighted_cut_string = appendCut(cut_string, scale_weight_expr)
-#            producer.setCutString(weighted_cut_string)
-#            logging.debug("Draw expression was %s" % draw_expr)
-#            proof_name = "_".join([name, "%s#/%s" % (selection.replace("/", "_"), tree)])
-#            logging.debug("Proof path was %s" % proof_name)
-#            chan = tree.split("/")[0]
-#            try:
-#                state_hist = producer.produce(draw_expr, proof_name)
-#                sum_hist.Add(state_hist)
-#                log_info += "Number of events in %s channel: %0.2f\n" % (chan, state_hist.Integral())
-#            except ValueError as error:
-#                logging.warning(error)
-#                log_info += "Number of events: 0.0\n" 
-#        # Just symmetric errors for now
-#        if scale_unc and not name in no_weights:
-#            scale_hist = histWithScaleUnc(sum_hist, 8, hist_name+"_scale")
-#            log_info += "Number of events in %s channel: %0.2f\n" % (chan, scale_hist.Integral())
-#            sum_hist.Delete()
-#            group_sum_hist.Add(scale_hist)
-#    final_hist = group_sum_hist
-#    log_info += "*"*80 + "\n\n"
-#    log_info += "Total number of weighted events for plot group %s: %0.2f\n" % (plot_group, final_hist.Integral())
-#    log_info += "\n" + "*"*80 + "\n"
-#    config_factory.setHistAttributes(final_hist, branch_name, plot_group)
-#    #if "scale" in uncertainties or "all" in uncertainties:
-#    if uncertainties == "all":
-#        config_factory.addErrorToHist(final_hist, plot_group)
-#    logging.debug(log_info)
-#    logging.debug("Hist has %i raw entries" % final_hist.GetEntries())
-#    with open("temp-verbose.txt", "a") as log_file:
-#        log_file.write(log_info)
-#    if addOverflow:
-#        # Returns num bins + overflow + underflow
-#        num_bins = final_hist.GetSize() - 2
-#        add_overflow = final_hist.GetBinContent(num_bins) + final_hist.GetBinContent(num_bins + 1)
-#        final_hist.SetBinContent(num_bins, add_overflow)
-#    return final_hist
-
 def histWithScaleUnc(scale_hist2D, entries, name):
     if not isinstance(scale_hist2D, ROOT.TH2):
         raise ValueError("Scale uncertainties require 2D histogram")

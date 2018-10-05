@@ -238,15 +238,16 @@ def main():
                 bkerror_chan = rebinMTWZ(bkerror_chan, "bktmp")
             if not error_hist:
                 error_hist = error_chan.Clone("errors")
+                bkerror_hist = bkerror_chan.Clone("bkerrors")
             else:
                 error_hist.Add(error_chan)
+                bkerror_hist.Add(bkerror_chan)
             error = array.array('d', [0])
             integral = error_chan.IntegralAndError(0, error_chan.GetNbinsX(), error)
             hist_info["predyield"][chan] = (integral, error[0])
 
-        bkerror_hist = rtfile.Get("/".join([folder, "total_overall"]))
         error = array.array('d', [0])
-        integral = bkerror_hist.IntegralAndError(1+args.noCR, bkerror_hist.GetNbinsX(), error)
+        integral = bkerror_hist.IntegralAndError(1, bkerror_hist.GetNbinsX(), error)
         hist_info["predyield"]["total"] = (integral, error[0])
 
         canvas = helper.makePlots([hist_stack], [data_hist], plot_name, args, signal_stacks=[signal_stack],

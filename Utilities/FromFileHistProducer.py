@@ -13,7 +13,7 @@ class FromFileHistProducer(HistProducer):
         if not self.hist_file:
             raise ValueError("Invalid file " % file_name)
 
-    def produce(self, hist_name, overflow=False): 
+    def produce(self, hist_name, overflow=False, binning=0): 
         hist = self.hist_file.Get(hist_name)
         ROOT.SetOwnership(hist, False)
         if not hist:
@@ -22,8 +22,8 @@ class FromFileHistProducer(HistProducer):
         hist.Scale(self.getHistScaleFactor())
         # This causes GetEntries() to return 1 greater than the "actual"
         # number of entries in the hist
+        hist = self.rebin(hist, binning)
         if overflow:
-            # Returns num bins + overflow + underflow
             num_bins = hist.GetSize() - 2
             add_overflow = hist.GetBinContent(num_bins) + hist.GetBinContent(num_bins + 1)
             hist.SetBinContent(num_bins, add_overflow)

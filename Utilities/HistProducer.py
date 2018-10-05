@@ -1,6 +1,7 @@
 import ROOT
 import WeightInfo
 import abc
+import array
 
 class HistProducer(object):
     __metaclass__ = abc.ABCMeta
@@ -28,6 +29,14 @@ class HistProducer(object):
         elif units != 'fb-1':
             raise ValueError("Invalid luminosity units! Options are 'pb-1' and 'fb-1'")
         self.lumi = lumi if lumi > 0 else 1
+
+    def rebin(self, hist, binning):
+        if len(binning) == 1:
+            hist.Rebin(int(binning[0]))
+        else:
+            bins = array.array('d', binning)
+            hist = hist.Rebin(len(bins)-1, "", bins)
+        return hist
 
     @abc.abstractmethod
     def produce(self, input): 

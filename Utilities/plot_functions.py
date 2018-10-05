@@ -98,8 +98,9 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
         elif len(stack_hists) > 1:
             map(centralRatioHist.Add, stack_hists[1:])
     centralHist = centralRatioHist.Clone("temp")
-    centralRatioHist.SetFillColor(ROOT.TColor.GetColor("#e4e5e5"))
-    centralRatioHist.SetFillStyle(1001)
+    centralRatioHist.SetFillColor(ROOT.TColor.GetColor("#828282"))
+    #centralRatioHist.SetFillStyle(1001)
+    centralRatioHist.SetFillStyle(3345)
     centralRatioHist.SetMarkerSize(0)
     if compareData:
         ratioHist = ratioHists[0]
@@ -219,6 +220,8 @@ def getHistErrors(hist):
     histErrors.SetDirectory(0)
     if not histErrors.GetSumw2(): histErrors.Sumw2()
     histErrors.SetFillStyle(3345)
+    histErrors.SetFillColor(ROOT.TColor.GetColor("#a8a8a8"))
+    histErrors.SetLineColor(ROOT.TColor.GetColor("#a8a8a8"))
     histErrors.SetLineWidth(1)
     ROOT.gStyle.SetHatchesLineWidth(1)
     ROOT.gStyle.SetHatchesSpacing(0.75)
