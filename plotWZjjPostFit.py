@@ -16,6 +16,11 @@ import datetime
 from Utilities.scripts import makeSimpleHtml
 from IPython import embed
 import logging
+import pdb
+
+module_path = "%s/src/Analysis/VVAnalysis/Utilities/python" % os.environ["CMSSW_BASE"]
+sys.path.insert(0, module_path)
+import ConfigureJobs
 
 def getComLineArgs():
     parser = UserInput.getDefaultParser()
@@ -59,18 +64,28 @@ def makeLogFile(channels, hist_info, args):
     formatted_names = { "wz-powheg" : "WZ (POWHEG)",
         "wz-mgmlm" : "WZ (MG MLM)",
         "QCD-WZjj" : "QCD-WZjj",
+        "WZ" : "QCD-WZjj",
         "EW-WZjj" : "EW-WZjj",
+        "EWWZ" : "EW-WZjj",
+        "Higgs" : "Charged Higgs signal (m = 900)",
+        "Higgs_M400" : "Charged Higgs signal (m = 500)",
+        "Higgs_M500" : "Charged Higgs signal (m = 500)",
+        "Higgs_M900" : "Charged Higgs signal (m = 900)",
         "wzjj-ewk" : "WZjj EWK",
         "wzjj-ewk_filled" : "WZjj EWK",
         "wzjj-vbfnlo" : "WZjj EWK (VBFNLO)",
         "nonprompt" : "Nonprompt",
+        "Fake" : "Nonprompt",
+        "VVV" : "t+V/VVV",
         "top-ewk" : "t+V/VVV",
         "zg" : "Z$\gamma$",
+        "Zg" : "Z$\gamma$",
         "vv-powheg" : "VV (POWHEG)",
         "vv" : "VV",
+        "ZZ" : "VV",
         "wz" : "WZ (MG5\_aMC)",
         "wz-powheg" : "WZ (POWHEG)",
-        "predyield" : "Pred. Background",
+        "predyield" : "Pred. background",
         "data_2016" : "Data",
         "data" : "Data",
         "data_2016H" : "Data (2016H)",
@@ -89,9 +104,9 @@ def makeLogFile(channels, hist_info, args):
             else:
                 yield_info[chan] = getFormattedYieldAndError(entry[chan][0], entry[chan][1], sigfigs)
         if name == "data":
-            yield_info["Total Yield"] = "%i" % entry["total"][0] 
+            yield_info["Total yield"] = "%i" % entry["total"][0] 
         else:
-            yield_info["Total Yield"] = getFormattedYieldAndError(entry["total"][0], entry["total"][1], sigfigs)
+            yield_info["Total yield"] = getFormattedYieldAndError(entry["total"][0], entry["total"][1], sigfigs)
         yield_table.add_row([formatted_names[name]] + yield_info.values())
     with open("temp.txt", "a") as log_file:
         log_file.write(yield_table.get_latex_string())
@@ -116,13 +131,28 @@ def removeControlRegion(hist):
         new_hist.SetBinError(i-1, hist.GetBinError(i))
     return new_hist
 
-def rebinMTWZ(hist, hist_name):
-    binning = array.array('d', [0,100,200,300,400,500,700,1000,1500,2000]) 
+def rebinMTWZ(hist, hist_name, isHiggs):
+    binning = array.array('d', ConfigureJobs.getBinning(isHiggs=isHiggs)) 
     new_hist = ROOT.TH1D(hist_name, hist_name, len(binning)-1, binning)
     for i in range(hist.GetNbinsX()+1):
         new_hist.SetBinContent(i, hist.GetBinContent(i))
         new_hist.SetBinError(i, hist.GetBinError(i))
     return new_hist
+
+def getChanMapping(chan):
+    mapping = {"mmm" : 2, 
+        "emm" : 3,
+        "eem" : 4,
+        "eee" : 5,
+    }
+    return mapping[chan]
+
+def getYieldByChannelHist(hist, chan):
+    chan_hist = ROOT.TH1D(hist.GetName(), hist.GetName(), 5, 0, 5)
+    for i in [1, getChanMapping(chan)]:
+        chan_hist.SetBinContent(i, hist.GetBinContent(1))
+        chan_hist.SetBinError(i, hist.GetBinError(1))
+    return chan_hist
 
 def main():
     args = getComLineArgs()
@@ -158,9 +188,12 @@ def main():
         hist_stack = ROOT.THStack("stack_postfit", "stack_postfit")
         signal_stack = ROOT.THStack("signalstack_prefit", "sig_prefit")
         data_hist = 0
-        plot_groups = args.files_to_plot.split(",")
+        plot_groups = args.files_to_plot.split(",") 
         if not args.no_data:
             plot_groups.append("data")
+        if args.signal_files:
+            plot_groups.extend(args.signal_files.split(","))
+        isHiggs = "higgs" in args.signal_files.lower()
         for i, plot_group in enumerate(plot_groups):
             hist_info[plot_group] = OrderedDict({"mmm" : [0,0],
                 "emm" : [0,0],
@@ -173,18 +206,24 @@ def main():
             central_hist = 0
             for chan in channels:
                 folder = "shapes_fit_b" if args.backgroundOnly else "shapes_fit_s"
-                if "aqgc" in plot_group:
+                if i >= len(args.files_to_plot.split(","))+(not args.no_data):
                     isSignal = True
-                    folder = "shapes_prefit"
+                    if plot_group != "EW-WZjj":
+                        folder = "shapes_prefit"
                 hist_name = "/".join([folder, chan, plot_group if plot_group != "wzjj-ewk_filled" else "EW-WZjj"])
 
                 hist = rtfile.Get(hist_name)
+                if not hist:
+                    raise RuntimeError("Error: Failed to find hist %s" % hist_name)
                 if hist.InheritsFrom("TGraph"):
                     hist = histFromGraph(hist, "_".join([plot_group, chan]))
                 if args.noCR:
                     hist = removeControlRegion(hist)
                 if "MTWZ" in plot_name:
-                    hist = rebinMTWZ(hist, hist_name)
+                    hist = rebinMTWZ(hist, hist_name, isHiggs)
+                if "yieldByChannel" in plot_name:
+                    hist = getYieldByChannelHist(hist, chan)
+
                 if not central_hist:
                     central_hist = hist
                     central_hist.SetName(plot_group)
@@ -234,8 +273,11 @@ def main():
                 error_chan = removeControlRegion(error_chan)
                 bkerror_chan = removeControlRegion(bkerror_chan)
             if "MTWZ" in plot_name:
-                error_chan = rebinMTWZ(error_chan, "tmp")
-                bkerror_chan = rebinMTWZ(bkerror_chan, "bktmp")
+                error_chan = rebinMTWZ(error_chan, "tmp", isHiggs)
+                bkerror_chan = rebinMTWZ(bkerror_chan, "bktmp", isHiggs)
+            if "yieldByChannel" in plot_name:
+                error_chan = getYieldByChannelHist(error_chan, chan)
+                bkerror_chan = getYieldByChannelHist(bkerror_chan, chan)
             if not error_hist:
                 error_hist = error_chan.Clone("errors")
                 bkerror_hist = bkerror_chan.Clone("bkerrors")
@@ -243,13 +285,14 @@ def main():
                 error_hist.Add(error_chan)
                 bkerror_hist.Add(bkerror_chan)
             error = array.array('d', [0])
-            integral = error_chan.IntegralAndError(0, error_chan.GetNbinsX(), error)
+            integral = bkerror_chan.IntegralAndError(0, bkerror_chan.GetNbinsX(), error)
             hist_info["predyield"][chan] = (integral, error[0])
 
         error = array.array('d', [0])
         integral = bkerror_hist.IntegralAndError(1, bkerror_hist.GetNbinsX(), error)
         hist_info["predyield"]["total"] = (integral, error[0])
 
+        plotter.setErrorsStyle(error_hist)
         canvas = helper.makePlots([hist_stack], [data_hist], plot_name, args, signal_stacks=[signal_stack],
                         errors=[error_hist] if error_hist else [])
         if "CR" not in plot_name and "unrolled" in plot_name:
@@ -267,8 +310,8 @@ def main():
                 line.Draw()
                 ROOT.SetOwnership(line, False)
             for i, label in enumerate(["#in [2.5, 4]", "#in [4, 5]", "#geq 5   "]):
-                xmin = 0.22 + 0.24*i +0.05*(i==2)
-                ymin = 0.15 if i == 2 else 0.5
+                xmin = 0.215 + 0.24*i +0.052*(i==2)
+                ymin = 0.12 if i == 2 else 0.5
                 ymax = ymin + (0.2 if i ==0 else 0.18)
                 xmax = xmin + (0.19 if i ==0 else 0.175)
                 text_box = ROOT.TPaveText(xmin, ymin, xmax, ymax, "NDCnb")
@@ -279,6 +322,10 @@ def main():
                 ROOT.SetOwnership(text_box, False)
 
         makeLogFile(channels, hist_info, args)
+        stackPad = canvas.GetListOfPrimitives().FindObject("stackPad")
+        stackPad.RedrawAxis()
+        canvas.Modified()
+        canvas.Update()
         helper.savePlot(canvas, plot_path, html_path, plot_name, True, args)
         makeSimpleHtml.writeHTML(html_path.replace("/plots",""), args.selection)
 

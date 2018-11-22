@@ -138,6 +138,7 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
         signal_stacks[0].GetXaxis().Copy(centralRatioHist.GetXaxis())
         signal_stacks[0].GetXaxis().Copy(centralRatioHist.GetXaxis())
     centralRatioHist.GetYaxis().SetTitle(ratio_text)
+    centralRatioHist.GetXaxis().SetLabelOffset(0.03)
     centralRatioHist.GetYaxis().CenterTitle()
     centralRatioHist.GetYaxis().SetRangeUser(*ratio_range)
     centralRatioHist.GetYaxis().SetNdivisions(003)
@@ -167,11 +168,14 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
     line.Draw()
     recursePrimitives(stackPad, fixFontSize, 1/0.7)
     stackPad.Modified()
-    recursePrimitives(ratioPad, fixFontSize, 1/0.3)
+    isLong = stackPad.GetWw()/stackPad.GetWh() > 1.1
+    recursePrimitives(ratioPad, fixFontSize, 1/0.27, 0.85 if isLong else 1.15)
+    yaxis_ratio = centralRatioHist.GetYaxis()
+    #yaxis_ratio.SetTitleOffset(.3) 
     if "unrolled" in name:
-        xaxis.SetLabelSize(0.175)
-        xaxis.SetLabelOffset(0.03)
-        xaxis.SetTitleOffset(1.25)
+        xaxis.SetLabelSize(0.172)
+        xaxis.SetLabelOffset(0.027)
+        xaxis.SetTitleOffset(1.07)
     ratioPad.Modified()
     canvas.Update()
     ROOT.SetOwnership(stackPad, False)
@@ -197,11 +201,11 @@ def recursePrimitives(tobject, function, *fargs) :
         if hasattr(tobject, 'Get'+child) :
             childCall = getattr(tobject, 'Get'+child)
             recursePrimitives(childCall(), function, *fargs)
-def fixFontSize(item, scale) :
+def fixFontSize(item, scale, axisOffsetScale=1) :
     if 'TH' in item.ClassName() :
         return
     if item.GetName() == 'yaxis' :
-        item.SetTitleOffset(item.GetTitleOffset()/scale)
+        item.SetTitleOffset(item.GetTitleOffset()/scale*axisOffsetScale)
     sizeFunctions = ['LabelSize', 'TextSize', 'TitleSize']
     for fun in sizeFunctions :
         if hasattr(item, 'Set'+fun) :
@@ -218,11 +222,15 @@ def getHistErrors(hist):
     histErrors = hist.Clone()
     histErrors.SetName(hist.GetName() + "_errors")
     histErrors.SetDirectory(0)
+    setErrorsStyle(histErrors)
     if not histErrors.GetSumw2(): histErrors.Sumw2()
-    histErrors.SetFillStyle(3345)
-    histErrors.SetFillColor(ROOT.TColor.GetColor("#a8a8a8"))
-    histErrors.SetLineColor(ROOT.TColor.GetColor("#a8a8a8"))
     histErrors.SetLineWidth(1)
     ROOT.gStyle.SetHatchesLineWidth(1)
     ROOT.gStyle.SetHatchesSpacing(0.75)
     return histErrors
+
+def setErrorsStyle(histErrors):
+    histErrors.SetMarkerSize(0)
+    histErrors.SetFillStyle(3345)
+    histErrors.SetFillColor(ROOT.TColor.GetColor("#a8a8a8"))
+    histErrors.SetLineColor(ROOT.TColor.GetColor("#a8a8a8"))

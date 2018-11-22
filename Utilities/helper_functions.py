@@ -33,8 +33,9 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=[0], errors=[])
     else: 
         width = .33
     width *= args.scalelegx
-    xcoords = [.10+offset, .1+width+offset] if args.legend_left \
-        else [.92-width-offset, .92-offset]
+    xdist = 0.1 if args.legend_left else 0.91
+    xcoords = [xdist+offset, xdist+width+offset] if args.legend_left \
+        else [xdist-width-offset, xdist-offset]
     unique_entries = min(len(hist_stacks[0].GetHists()), 8)
     ymax = 0.8 if args.legend_left else 0.9
     ycoords = [ymax, ymax - 0.08*unique_entries*args.scalelegy]
@@ -42,15 +43,17 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=[0], errors=[])
     
     if "none" not in args.uncertainties:
         histErrors = getHistErrors(hist_stacks[0], args.nostack) if not errors else errors
-        for error_hist in histErrors:
+        for error_hist,signal_stack,data_hist in zip(histErrors, signal_stacks, data_hists):
             ROOT.SetOwnership(error_hist, False)
             error_hist.SetLineWidth(1)
             ROOT.gStyle.SetHatchesLineWidth(1)
             ROOT.gStyle.SetHatchesSpacing(0.75)
             error_hist.Draw("same e2")
-            signal_stack.Draw("same hist")
-            data_hist.Draw("e0 same")
-            error_title = "Stat. Unc."
+            if signal_stack:
+                signal_stack.Draw("nostack same hist")
+            if not args.no_data:
+                data_hist.Draw("e0 same")
+            error_title = "Stat. unc."
             if "all" in args.uncertainties:
                 error_title = "Stat.#oplusSyst."
             elif "scale" in args.uncertainties:
@@ -65,12 +68,20 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=[0], errors=[])
         ROOT.dotrootImport('kdlong/CMSPlotDecorations')
         scale_label = "Normalized to Unity" if args.luminosity < 0 else \
             "%0.1f fb^{-1}" % args.luminosity
-        ROOT.CMSlumi(canvas, 0, 11, "%s (13 TeV)" % scale_label,"")
-                #"Preliminary Simulation" if args.simulation else "Preliminary")
+        
+        lumi_text = ""
+        if args.thesis:
+            lumi_text = "Thesis" 
+        elif args.preliminary:
+            lumi_text = "Preliminary" 
+        if args.simulation:
+            lumi_text += "Simulation" 
+
+        ROOT.CMSlumi(canvas, 0, 11, "%s (13 TeV)" % scale_label, lumi_text)
     if args.extra_text != "":
         lines = [x.strip() for x in args.extra_text.split(";")]
-        ymax = coords[3]
-        box_size = 0.05*len(lines)
+        ymax = coords[3] - 0.02
+        box_size = 0.05*len(lines)*args.scalelegy
         if args.extra_text_above:
             ymax = coords[1] 
             coords[1] -= box_size
@@ -126,6 +137,10 @@ def makePlot(hist_stack, data_hist, name, args, signal_stack=0, same=""):
             data_hist.Sumw2(False)
             data_hist.SetBinErrorOption(ROOT.TH1.kPoisson)
         data_hist.Draw("e0 same")
+    if signal_stack and "EW-WZjj" in [h.GetName() for h in signal_stack.GetHists()]:
+        error_hist.Draw("same e2")
+        signal_stack.Draw("same nostack hist")
+        data_hist.Draw("e0 same")
     first_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
     first_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
     first_stack.GetYaxis().SetTitle(
@@ -135,7 +150,6 @@ def makePlot(hist_stack, data_hist, name, args, signal_stack=0, same=""):
         # Remove first bin label to avoid overlap of canvases
         if hists[0].GetMinimum() == 0.0:
             first_stack.GetYaxis().ChangeLabel(1, -1.0, 0)
-        print hists[0].GetMinimum() 
     first_stack.GetHistogram().GetXaxis().SetTitle(
         hists[0].GetXaxis().GetTitle())
     first_stack.GetHistogram().SetLabelSize(0.04)
@@ -330,7 +344,6 @@ def getConfigHistFromFile(filename, config_factory, plot_group, selection, branc
 
     bin_info = config_factory.getHistBinInfo(branch_name)
     states = channels.split(",")
-    print "OVERFLOW?", addOverflow
     hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, uncertainties, addOverflow, rebin)
     config_factory.setHistAttributes(hist, branch_name, plot_group)
 
@@ -461,7 +474,7 @@ def getPlotPaths(selection, folder_name, write_log_file=False):
         storage_area = "/nfs_scratch/kdlong"
         html_area = "/afs/hep.wisc.edu/home/kdlong/public_html"
     else:
-        storage_area = "/eos/user/k/%s" % os.environ["USER"]
+        storage_area = "/eos/home-k/%s" % os.environ["USER"]
         html_area = "/afs/cern.ch/user/k/%s/www" % os.environ["USER"]
     base_dir = "%s/DibosonAnalysisData/PlottingResults" % storage_area
     plot_path = "/".join([base_dir, selection] +

@@ -110,6 +110,7 @@ def getStacked(name, config_factory, selection, filelist, branch_name, channels,
 def main():
     args = getComLineArgs()
     ROOT.gROOT.SetBatch(True)
+    ROOT.gStyle.SetOptDate(0)
     if args.hist_file == "":
         ROOT.TProof.Open('workers=12')
     filelist = UserInput.getListOfFiles(args.files_to_plot, args.selection)
@@ -176,6 +177,14 @@ def main():
 
         #embed()
         canvas = helper.makePlots(hist_stacks, data_hists, name, args, signal_stacks)
+
+        #ratioPad = canvas.GetListOfPrimitives().FindObject("ratioPad")
+        #stackPad = canvas.GetListOfPrimitives().FindObject("stackPad")
+        #ratiohist = ratioPad.GetListOfPrimitives().FindObject('%s_canvas_central_ratioHist' % name)
+        #for i in ratioPad.GetListOfPrimitives(): print i
+        #xaxis = hist.GetXaxis()
+        #xaxis.SetLabelOffset(1.2)
+
         helper.savePlot(canvas, plot_path, html_path, plot_name, True, args)
         makeSimpleHtml.writeHTML(html_path.replace("/plots",""), args.selection)
 

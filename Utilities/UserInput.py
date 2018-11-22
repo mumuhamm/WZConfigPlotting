@@ -50,6 +50,10 @@ def getDefaultParser():
                         help="Position extra text above the legend")
     parser.add_argument("--simulation", action='store_true',
                         help="Write 'Simulation' in CMS style text")
+    parser.add_argument("--thesis", action='store_true',
+                        help="Write 'Thesis' in CMS style text")
+    parser.add_argument("--preliminary", action='store_true',
+                        help="Write 'Preliminary' in CMS style text")
     parser.add_argument("--no_overflow", action='store_true',
                         help="No overflow bin")
     parser.add_argument("-u", "--uncertainties", type=str, default="all",

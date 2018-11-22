@@ -31,7 +31,11 @@ class HistProducer(object):
         self.lumi = lumi if lumi > 0 else 1
 
     def rebin(self, hist, binning):
-        if len(binning) == 1:
+        if not binning:
+            return hist
+        if type(binning) == int:
+            hist.Rebin(binning)
+        elif len(binning) == 1:
             hist.Rebin(int(binning[0]))
         else:
             bins = array.array('d', binning)

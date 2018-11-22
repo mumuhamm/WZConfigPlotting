@@ -122,7 +122,7 @@ if args.hist_file == "":
     ROOT.TProof.Open('workers=12')
 
 dataset_manager = "%s/AnalysisDatasetManager" % path
-cutflow_maker = CutFlowTools.CutFlowHistMaker("YieldByChannel",
+cutflow_maker = CutFlowTools.CutFlowHistMaker("yieldByChannel",
     dataset_manager,
     args.selection,
     )
@@ -159,10 +159,10 @@ if len(args.signal_files) > 0:
     signal_stack = getMonteCarloStack("signal_stack", cutflow_maker, signal_filelist, 
         args.uncertainties, not args.no_scalefactors, args.hist_file)
 hist_stack.Draw()
-canvas = helper.makePlots([hist_stack], [data_hist], "YieldByChan", args, [signal_stack])
+canvas = helper.makePlots([hist_stack], [data_hist], "yieldByChan", args, [signal_stack])
 canvas.SetRightMargin(0.3)
 ratioPad = ROOT.gPad.GetListOfPrimitives().FindObject("ratioPad")
-hist = ratioPad.GetListOfPrimitives().FindObject('YieldByChan_canvas_central_ratioHist')
+hist = ratioPad.GetListOfPrimitives().FindObject('yieldByChan_canvas_central_ratioHist')
 hist.GetXaxis().SetLabelSize(0.2)
 makeLogFile(channels, hist_stack, data_hist, signal_stack)
 
