@@ -131,15 +131,11 @@ def makePlot(hist_stack, data_hist, name, args, signal_stack=0, same=""):
         signal_stack.Draw("hist nostack same")
         signal_stack.GetHistogram().GetXaxis().SetTitle(
             hists[0].GetXaxis().GetTitle())
-    #first_stack = signal_stack if stack_signal else hist_stack
+
     if data_hist:
         if not "yield" in name.lower():
             data_hist.Sumw2(False)
             data_hist.SetBinErrorOption(ROOT.TH1.kPoisson)
-        data_hist.Draw("e0 same")
-    if signal_stack and "EW-WZjj" in [h.GetName() for h in signal_stack.GetHists()]:
-        error_hist.Draw("same e2")
-        signal_stack.Draw("same nostack hist")
         data_hist.Draw("e0 same")
     first_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
     first_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
