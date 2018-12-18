@@ -309,7 +309,7 @@ def main():
                 stackPad.cd()
                 line.Draw()
                 ROOT.SetOwnership(line, False)
-            for i, label in enumerate(["#in [2.5, 4]", "#in [4, 5]", "#geq 5   "]):
+            for i, label in enumerate(["#in [2.5, 4.0]", "#in [4.0, 5.0]", "#geq 5.0   "]):
                 xmin = 0.215 + 0.24*i +0.052*(i==2)
                 ymin = 0.12 if i == 2 else 0.5
                 ymax = ymin + (0.2 if i ==0 else 0.18)
@@ -317,13 +317,17 @@ def main():
                 text_box = ROOT.TPaveText(xmin, ymin, xmax, ymax, "NDCnb")
                 text_box.SetFillColor(0)
                 text_box.SetTextFont(42)
-                text_box.AddText("#Delta#eta_{jj} %s" % label)
+                text_box.AddText("|#scale[0.5]{ }#Delta#eta_{jj}| %s" % label)
                 text_box.Draw()
                 ROOT.SetOwnership(text_box, False)
 
         makeLogFile(channels, hist_info, args)
         stackPad = canvas.GetListOfPrimitives().FindObject("stackPad")
         stackPad.RedrawAxis()
+        # Force it to offset in desperate situations
+        #ratioPad = canvas.GetListOfPrimitives().FindObject("ratioPad")
+        #ratiohist = ratioPad.GetListOfPrimitives().FindObject('%s_canvas_central_ratioHist' % plot_name)
+        #ratiohist.GetXaxis().SetTitleOffset(1.5)
         canvas.Modified()
         canvas.Update()
         helper.savePlot(canvas, plot_path, html_path, plot_name, True, args)

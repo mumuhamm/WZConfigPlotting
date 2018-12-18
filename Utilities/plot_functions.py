@@ -168,7 +168,7 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
     line.Draw()
     recursePrimitives(stackPad, fixFontSize, 1/0.7)
     stackPad.Modified()
-    isLong = stackPad.GetWw()/stackPad.GetWh() > 1.1
+    isLong = float(stackPad.GetWw())/float(stackPad.GetWh()) > 1.1
     recursePrimitives(ratioPad, fixFontSize, 1/0.27, 0.85 if isLong else 1.15)
     yaxis_ratio = centralRatioHist.GetYaxis()
     #yaxis_ratio.SetTitleOffset(.3) 
