@@ -136,7 +136,7 @@ def makePlot(hist_stack, data_hist, name, args, signal_stack=0, same=""):
         if not "yield" in name.lower():
             data_hist.Sumw2(False)
             data_hist.SetBinErrorOption(ROOT.TH1.kPoisson)
-        data_hist.Draw("e0 same")
+        #data_hist.Draw("e0 same")
     first_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
     first_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
     first_stack.GetYaxis().SetTitle(
