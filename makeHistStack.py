@@ -118,7 +118,8 @@ def main():
         "/afs/cern.ch/user/k/kelong/work"
     config_factory = ConfigHistFactory(
         "%s/AnalysisDatasetManager" % path,
-        args.selection.split("_")[0],
+        #args.selection.split("_")[0],
+        args.selection,
         args.object_restrict
     )
     branches = config_factory.getListOfPlotObjects() if args.branches == "all" \

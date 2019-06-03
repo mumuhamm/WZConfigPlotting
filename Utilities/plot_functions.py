@@ -65,7 +65,7 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
     signal_hists = [i for s in signal_stacks for i in s.GetHists()]
     if len(data_list) == 0:
         compareData = False
-    elif len(stack_hists) < 2:
+    elif len(stack_hists) < 2 and not compareData:
         print "Can't form ratio from < 2 histograms"
         return oldcanvas
     name = oldcanvas.GetName()

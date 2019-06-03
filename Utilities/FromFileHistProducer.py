@@ -24,7 +24,7 @@ class FromFileHistProducer(HistProducer):
         # number of entries in the hist
         hist = self.rebin(hist, binning)
         if overflow:
-            num_bins = hist.GetSize() - 2
+            num_bins = hist.GetNbinsX()
             add_overflow = hist.GetBinContent(num_bins) + hist.GetBinContent(num_bins + 1)
             hist.SetBinContent(num_bins, add_overflow)
         return hist
