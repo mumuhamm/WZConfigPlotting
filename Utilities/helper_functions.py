@@ -513,12 +513,18 @@ def savePlot(canvas, plot_path, html_path, branch_name, write_log_file, args):
     canvas.Print(output_name + ".root")
     canvas.Print(output_name + ".C")
     if not args.no_html:
+        coverteps = subprocess.call(["command", "-v", "epstopdf"])
         makeDirectory(html_path + "/plots")
         output_name ="/".join([html_path, "plots", branch_name])
         canvas.Print(output_name + ".png")
-        canvas.Print(output_name + ".eps")
-        #subprocess.call(["epstopdf", "--outfile=%s" % output_name+".pdf", output_name+".eps"])
-        os.remove(output_name+".eps")
+        # Because ROOT pdf output doesn't display latex properly.
+        # Unfortunately you can't take epstopdf for granted
+        if coverteps == 0:
+            canvas.Print(output_name + ".eps")
+            subprocess.call(["epstopdf", "--outfile=%s" % output_name+".pdf", output_name+".eps"])
+            os.remove(output_name+".eps")
+        else:
+            canvas.Print(output_name + ".pdf")
         if write_log_file:
             makeDirectory(html_path + "/logs")
             shutil.copy(log_file, log_file.replace(plot_path, html_path))
