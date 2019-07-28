@@ -156,7 +156,9 @@ def main():
                             cut_string)
                 else:
                     #data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_all", 
-                    data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_2016", 
+                    #data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_2016", 
+                    #data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_nano_2016", 
+                    data_hist = helper.getConfigHistFromFile(args.hist_file, config_factory, "data_nano_2017", 
                             args.selection, branch_name, args.channels,addOverflow=(not args.no_overflow), rebin=args.rebin)
                 with open("temp.txt", "a") as events_log_file:
                     events_log_file.write("\nNumber of events in data: %i\n" % data_hist.Integral())

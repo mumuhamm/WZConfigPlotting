@@ -210,12 +210,13 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, hist_file=
         else:
             hist_factory[name] = dict(all_files[name])
         if "data" not in name.lower() and name != "nonprompt":
-            kfac = 1. if 'kfactor' not in mc_info[base_name].keys() else mc_info[base_name]['kfactor']
+            ref_info = mc_info[name] if name in mc_info.keys() else mc_info[base_name]
+            kfac = 1. if 'kfactor' not in ref_info.keys() else ref_info['kfactor']
             if not hist_file:
                 metaTree = ROOT.TChain(metaTree_name)
                 metaTree.Add(hist_factory[name]["file_path"])
                 weight_info = WeightInfo.WeightInfoProducer(metaTree, 
-                        mc_info[base_name]['cross_section']*kfac,
+                        ref_info['cross_section']*kfac,
                         sum_weights_branch).produce()
             else:
                 # Not the most elegant way to go about it, but better to read
