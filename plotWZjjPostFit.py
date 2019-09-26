@@ -93,11 +93,12 @@ def makeLogFile(channels, hist_info, args):
         "qqZZ_powheg" : "qq #to ZZ",
         "HZZ_signal" : "H #to ZZ",
         "ggZZ" : "gg #to ZZ",
+        "zzjj4l_ewk" : "EW ZZjj",
     }
 
     sigfigs = 3
     for name, entry in hist_info.iteritems():
-        if "aqgc" in name:
+        if "aqgc" in name or "atgc" in name:
             continue
         for i, chan in enumerate(channels):
             # Channels should be ordered the same way as passed to the histogram

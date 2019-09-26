@@ -108,6 +108,8 @@ def main():
                 down_hist.Scale(scale_fac)
             with open("temp.txt", "a") as mc_file:
                 mc_file.write("\nYield for %s is %0.2f" % (file_name, central_hist.Integral()))
+                mc_file.write("\nYield up var for %s is %0.2f" % (file_name, up_hist.Integral()))
+                mc_file.write("\nYield down var for %s is %0.2f" % (file_name, down_hist.Integral()))
             
             branch_name = branch.replace("_Fakes", "")
             config_factory.setHistAttributes(central_hist, branch_name, file_name)
