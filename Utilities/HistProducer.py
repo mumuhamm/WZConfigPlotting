@@ -2,6 +2,7 @@ import ROOT
 import WeightInfo
 import abc
 import array
+import logging
 
 class HistProducer(object):
     __metaclass__ = abc.ABCMeta
@@ -14,7 +15,8 @@ class HistProducer(object):
         if self.weight_info.getCrossSection() == 1:
             return 1
         if self.weight_info.getSumOfWeights() <= 0:
-            raise ValueError("Found non-positive sum of weights")
+            logging.warning("Found non-positive sum of weights! Hist will be scaled only by lumi")
+            return self.lumi
         return self.weight_info.getCrossSection()*self.lumi/self.weight_info.getSumOfWeights()
                         
     def getCrossSection(self):
@@ -24,6 +26,7 @@ class HistProducer(object):
         return self.weight_info.getSumOfWeights()
 
     def setLumi(self, lumi, units='pb-1'):
+        print "Lumi is", lumi
         if units == 'pb-1':
             lumi *= 1000
         elif units != 'fb-1':
