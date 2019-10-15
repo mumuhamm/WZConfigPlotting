@@ -29,11 +29,15 @@ def getComLineArgs():
 
 def rebinHist(hist, rebin):
     if rebin:
+        hist_name = hist.GetName()
         if len(rebin) == 1:
             hist.Rebin(int(rebin[0]))
         else:
             bins = array.array('d', rebin)
-            hist = hist.Rebin(len(bins)-1, "", bins)
+            rebin_hist = hist.Rebin(len(bins)-1, "", bins)
+            #rebin_hist = hist.Rebin(len(bins)-1, "temp", bins)
+
+        hist.SetName(hist_name)
     return hist
 def main():
     args = getComLineArgs()
@@ -49,6 +53,7 @@ def main():
         '-'*80 + '\n'
 
     rtfile = ROOT.TFile(args.hist_file)
+    colors = [ROOT.kBlack, ROOT.kRed, ROOT.kBlue, ROOT.kGray]
 
     for branch in args.branches.split(","):
         with open("temp.txt", "w") as mc_file:
@@ -72,17 +77,22 @@ def main():
 
                 if not central_hist:
                     central_hist = rtfile.Get(hist_name)
+                    central_hist.SetName(hist_name+"_%i" % i)
+                    if not central_hist:
+                        raise ValueError("Failed to find hist %s in file %s" % (hist_name, file_name))
                     up_hist = rtfile.Get(uphist_name)
                     down_hist = rtfile.Get(downhist_name)
+                    if not up_hist or not down_hist:
+                        raise ValueError("Failed to find hist for variation %s in file %s" % (systematic, file_name))
                     central_hist = rebinHist(central_hist, args.rebin)
                     up_hist = rebinHist(up_hist, args.rebin)
                     down_hist = rebinHist(down_hist, args.rebin)
                     central_hist.Draw()
                 else:
-                    if i == 0 or file_name != file_names[i-1]:
-                        central_hist_chan = rtfile.Get(hist_name)
-                        central_hist_chan = rebinHist(central_hist_chan, args.rebin)
-                        central_hist.Add(central_hist_chan)
+                    central_hist_chan = rtfile.Get(hist_name)
+                    central_hist_chan.SetName(hist_name+"_%i" % i)
+                    central_hist_chan = rebinHist(central_hist_chan, args.rebin)
+                    central_hist.Add(central_hist_chan)
                     up_hist_chan = rtfile.Get(uphist_name)
                     down_hist_chan = rtfile.Get(downhist_name)
                     up_hist_chan = rebinHist(up_hist_chan, args.rebin)
@@ -127,14 +137,9 @@ def main():
             down_hist.SetLineWidth(2)
             up_hist.SetLineStyle(5)
             down_hist.SetLineStyle(5)
-            #down_hist.SetLineColor(ROOT.TColor.GetColor("#980000"))
-
-            if "wzQCDModeling" in up_hist.GetName():
-                print "Oui oui"
-                up_hist.SetLineColor(ROOT.TColor.GetColor("#980000"))
-                down_hist.SetLineColor(ROOT.TColor.GetColor("#980000"))
-            #elif "wz-mgmlm_scale" in up_hist.GetName():
-            #    up_hist.SetLineColor(ROOT.TColor.GetColor("#016300"))
+            if i != 0:
+                up_hist.SetLineColor(colors[i])
+                down_hist.SetLineColor(colors[i])
 
             hist_stack.Add(central_hist)
             hist_stack.Add(up_hist)
@@ -154,7 +159,7 @@ def main():
         text_box.AddText("Systematic variation")
         for s in systematics:
             text_box.AddText(s)
-        text_box.AddText("; ".join(file_names))
+        text_box.AddText("; ".join(set(file_names)))
         for line, h in zip(text_box.GetListOfLines()[1:], hist_stack.GetHists()[1::3]):
             line.SetTextColor(h.GetLineColor())
         text_box.Draw()
@@ -164,7 +169,8 @@ def main():
         if not args.no_ratio:
             canvas = plotter.splitCanvas(canvas, canvas_dimensions,
                     "syst./cent.",
-                    [float(i) for i in args.ratio_range]
+                    [float(i) for i in args.ratio_range],
+                    args.uncertainties == "none"
             )
             ratioPad = canvas.FindObject("ratioPad")
             hist = ratioPad.GetListOfPrimitives().FindObject("canvas_central_ratioHist")

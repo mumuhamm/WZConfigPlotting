@@ -56,7 +56,7 @@ def loadHist(hist, tree, branch_name, cut_string, max_entries, append=False):
     return num
 # Modified from Nick Smith, U-Wisconsin
 # https://gitlab.cern.ch/ncsmith/monoZ/blob/master/plotter/plotting/splitCanvas.py
-def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
+def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range, noUnc=False):
     stacks = filter(lambda p: type(p) is ROOT.THStack and "signal" not in p.GetName(), oldcanvas.GetListOfPrimitives())
     signal_stacks = filter(lambda p: type(p) is ROOT.THStack and "signal" in p.GetName(), oldcanvas.GetListOfPrimitives())
     data_list = filter(lambda p: type(p) is ROOT.TH1D and 'data' in p.GetName().lower(), oldcanvas.GetListOfPrimitives())
@@ -144,16 +144,20 @@ def splitCanvas(oldcanvas, dimensions, ratio_text, ratio_range):
     centralRatioHist.GetYaxis().SetNdivisions(003)
     centralRatioHist.GetYaxis().SetTitleSize(centralRatioHist.GetYaxis().GetTitleSize()*0.8)
     centralRatioHist.GetYaxis().SetLabelSize(centralRatioHist.GetYaxis().GetLabelSize()*0.8)
-    centralRatioHist.Draw("E2")
+    if noUnc:
+        centralRatioHist.SetFillColor(0)
+    centralRatioHist.Draw("E2" if not noUnc else "hist")
     for ratioHist in ratioHists:
         drawOpt = "same"
         if not compareData:
             ratioHist.SetMarkerSize(0)
             ratioHist.SetMarkerColor(ratioHist.GetLineColor())
-            ratioHist.SetFillColor(ratioHist.GetLineColor())
+            #ratioHist.SetFillColor(ratioHist.GetLineColor())
+            ratioHist.SetFillColor(0)
             ratioHist.SetLineStyle(1)
             #drawOpt += " E2"
-            #drawOpt += " hist"
+            if noUnc:
+                drawOpt += " hist"
         else:
             drawOpt += " PZE0"
         ratioHist.Draw(drawOpt)

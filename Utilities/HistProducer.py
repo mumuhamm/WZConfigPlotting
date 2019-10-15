@@ -26,7 +26,6 @@ class HistProducer(object):
         return self.weight_info.getSumOfWeights()
 
     def setLumi(self, lumi, units='pb-1'):
-        print "Lumi is", lumi
         if units == 'pb-1':
             lumi *= 1000
         elif units != 'fb-1':

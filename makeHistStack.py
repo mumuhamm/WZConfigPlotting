@@ -23,6 +23,7 @@ def getComLineArgs():
     parser.add_argument("-s", "--selection", type=str, required=True,
                         help="Specificy selection level to run over")
     parser.add_argument("--latex", action='store_true', help='table in latex format')
+    parser.add_argument("--noScale", action='store_true', help="Don't apply additional scaling to plots")
     parser.add_argument("-r", "--object_restrict", type=str, default="",
                         help="Use modified object file")
     parser.add_argument("-b", "--branches", type=str, default="all",
@@ -82,7 +83,7 @@ def writeMCLogInfo(hist_info, selection, branch_name, luminosity, cut_string, la
         mc_file.write("\nRatio S/sqrt(S+B): %0.2f +/- %0.2f" % (round(likelihood, 2), 
             round(likelihood_err, 2)))
 def getStacked(name, config_factory, selection, filelist, branch_name, channels, blinding, addOverflow, latex,
-               cut_string="", luminosity=1, rebin=0, uncertainties="none", hist_file=""):
+               cut_string="", luminosity=1, rebin=0, uncertainties="none", hist_file="", noScale=False):
     hist_stack = ROOT.THStack(name, "")
     ROOT.SetOwnership(hist_stack, False)
     hist_info = {}
@@ -93,7 +94,8 @@ def getStacked(name, config_factory, selection, filelist, branch_name, channels,
                     uncertainties)
         else:
             hist = helper.getConfigHistFromFile(hist_file, config_factory, plot_set, 
-                        selection, branch_name, channels, luminosity, addOverflow=addOverflow, rebin=rebin)
+                        selection, branch_name, channels, luminosity, addOverflow=addOverflow, 
+                        rebin=rebin, noScale=noScale)
         if luminosity < 0:
             hist.Scale(1/hist.Integral())
         raw_events = hist.GetEntries() - 1
@@ -146,7 +148,7 @@ def main():
             try:
                 hist_stack = getStacked("stack_"+branch_name, config_factory, args.selection, filelist, 
                         branch_name, args.channels, args.blinding, not args.no_overflow, args.latex, cut_string,
-                        args.luminosity, args.rebin, args.uncertainties, args.hist_file)
+                        args.luminosity, args.rebin, args.uncertainties, args.hist_file, args.noScale)
             except ValueError as e:
                 logging.warning('\033[91m'+ str(e)+'\033[0m')
                 continue

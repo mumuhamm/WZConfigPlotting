@@ -245,7 +245,7 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, hist_file=
         hist_factory[name].update({"fromFile" : hist_file is not None})
     return hist_factory
 def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, 
-        uncertainties="none", addOverflow=False, rebin=0, cut_string="", removeNegatives=True):
+        uncertainties="none", addOverflow=False, rebin=0, cut_string="", removeNegatives=True, noScale=False):
     hist_name = "_".join([plot_group, selection.replace("/", "_"), branch_name])
     # TODO: Understand why this is broken in newer ROOT versions
     #rootdir = "gProof" if hasattr(ROOT, "gProof") else "gROOT"
@@ -271,7 +271,7 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
                 state_hist_name = str("%s/%s_%s" % (name, branch_name, state))
                 if str(plot_group).lower() == "nonprompt":
                     state_hist_name = state_hist_name.replace(state, "Fakes_"+state)
-                args = [state_hist_name, addOverflow, rebin]
+                args = [state_hist_name, addOverflow, rebin, noScale]
             else:
                 chan = state.split("/")[0] if "ntuple" in state else ""
                 config_factory.setProofAliases(chan)
@@ -317,7 +317,7 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
     return hist
 
 def getConfigHistFromFile(filename, config_factory, plot_group, selection, branch_name, channels,
-        luminosity=1, addOverflow=False, rebin=0, uncertainties="none", removeNegatives=True):
+        luminosity=1, addOverflow=False, rebin=0, uncertainties="none", removeNegatives=True, noScale=False):
     try:
         filelist = config_factory.getPlotGroupMembers(plot_group)
     except ValueError as e:
@@ -341,7 +341,7 @@ def getConfigHistFromFile(filename, config_factory, plot_group, selection, branc
 
     bin_info = config_factory.getHistBinInfo(branch_name)
     states = channels.split(",")
-    hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, uncertainties, addOverflow, rebin)
+    hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, uncertainties, addOverflow, rebin, noScale=noScale)
     config_factory.setHistAttributes(hist, branch_name, plot_group)
 
     return hist
