@@ -72,8 +72,8 @@ def main():
             central_hist = 0
             for chan in args.channels.split(","):
                 hist_name = file_name.replace("_standalone", "") + "/"+ "_".join([branch, chan])
-                uphist_name = hist_name.replace(chan, "_".join([systematic+"Up", chan]))
-                downhist_name = hist_name.replace(chan, "_".join([systematic+"Down", chan]))
+                uphist_name = hist_name.replace("_"+chan, "_"+"_".join([systematic+"Up", chan]))
+                downhist_name = hist_name.replace("_"+chan, "_"+"_".join([systematic+"Down", chan]))
 
                 if not central_hist:
                     central_hist = rtfile.Get(hist_name)
@@ -81,9 +81,11 @@ def main():
                     if not central_hist:
                         raise ValueError("Failed to find hist %s in file %s" % (hist_name, file_name))
                     up_hist = rtfile.Get(uphist_name)
+                    up_hist.SetName(uphist_name+"_%i" % i)
                     down_hist = rtfile.Get(downhist_name)
+                    down_hist.SetName(downhist_name+"_%i" % i)
                     if not up_hist or not down_hist:
-                        raise ValueError("Failed to find hist for variation %s in file %s" % (systematic, file_name))
+                        raise ValueError("Failed to find hist %s for variation %s in file %s" % (uphist_name, systematic, file_name))
                     central_hist = rebinHist(central_hist, args.rebin)
                     up_hist = rebinHist(up_hist, args.rebin)
                     down_hist = rebinHist(down_hist, args.rebin)

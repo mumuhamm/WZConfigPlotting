@@ -200,6 +200,10 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, hist_file=
     all_files = config_factory.getFileInfo()
     hist_factory = OrderedDict() 
     for name in filelist:
+        subtract = False
+        if "-" in name[0]:
+            subtract = True
+            name = name[1:]
         base_name = name.split("__")[0]
         if name not in all_files.keys():
             if not hist_file is None and not hist_file.Get(name):
@@ -209,6 +213,7 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, hist_file=
             hist_factory[name] = dict(all_files[base_name])
         else:
             hist_factory[name] = dict(all_files[name])
+        hist_factory[name]["subtract"] = subtract
         if "data" not in name.lower() and name != "nonprompt":
             ref_info = mc_info[name] if name in mc_info.keys() else mc_info[base_name]
             kfac = 1. if 'kfactor' not in ref_info.keys() else ref_info['kfactor']
@@ -282,6 +287,8 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
             
             try:
                 state_hist = producer.produce(*args)
+                if entry["subtract"]:
+                    state_hist.Scale(-1.)
             except ValueError as error:
                 logging.warning(error)
                 logging.warning("Error for file %s: %s" % (name, error))
