@@ -53,7 +53,9 @@ def main():
         '-'*80 + '\n'
 
     rtfile = ROOT.TFile(args.hist_file)
-    colors = [ROOT.kBlack, ROOT.kRed, ROOT.kBlue, ROOT.kGray]
+    colors = [ROOT.TColor.GetColor(x) for x in ["#a6cee3","#1f78b4","#b2df8a", "#33a02c", "#fb9a99", "#fdbf6f",
+                    "#e31a1c","#ff7f00","#cab2d6","#6a3d9a", "#ffff99", "#b15928",]
+    ]
 
     for branch in args.branches.split(","):
         with open("temp.txt", "w") as mc_file:
@@ -63,10 +65,12 @@ def main():
 
         systematics = args.systematics.split(",")
         systs = "_".join(systematics)
-        plot_name = "_".join([branch, systs]) if args.append_to_name == "" \
-                else "_".join([branch, systs, args.append_to_name])
+        plot_name = "_".join([branch, systs]) + args.append_to_name 
         hist_stack = ROOT.THStack("stack_"+branch, "stack_"+branch)
         file_names = args.files_to_plot.split(",")
+        if plot_name.count(file_names[0]) > 1:
+            names = plot_name.split("_"+file_names[0])
+            plot_name = "".join([names[0], "_"+file_names[0]]+names[1:])
         for i, file_name in enumerate(file_names):
             systematic = systematics[i]
             central_hist = 0
@@ -83,6 +87,7 @@ def main():
                     up_hist = rtfile.Get(uphist_name)
                     up_hist.SetName(uphist_name+"_%i" % i)
                     down_hist = rtfile.Get(downhist_name)
+                    down_hist.SetLineColor(ROOT.kYellow)
                     down_hist.SetName(downhist_name+"_%i" % i)
                     if not up_hist or not down_hist:
                         raise ValueError("Failed to find hist %s for variation %s in file %s" % (uphist_name, systematic, file_name))
@@ -120,8 +125,8 @@ def main():
                 down_hist.Scale(scale_fac)
             with open("temp.txt", "a") as mc_file:
                 mc_file.write("\nYield for %s is %0.2f" % (file_name, central_hist.Integral()))
-                mc_file.write("\nYield up var for %s is %0.2f" % (file_name, up_hist.Integral()))
-                mc_file.write("\nYield down var for %s is %0.2f" % (file_name, down_hist.Integral()))
+                mc_file.write("\nYield up for var %s for %s is %0.2f" % (file_name, systematic, up_hist.Integral()))
+                mc_file.write("\nYield down for var %s for %s is %0.2f" % (file_name, systematic, down_hist.Integral()))
             
             branch_name = branch.replace("_Fakes", "")
             config_factory.setHistAttributes(central_hist, branch_name, file_name)
@@ -155,7 +160,7 @@ def main():
         hist_stack.GetHistogram().GetYaxis().SetTitle("Events / bin")
         hist_stack.GetHistogram().GetYaxis().SetTitleOffset(1.05)
 
-        text_box = ROOT.TPaveText(0.65, 0.75-0.1*len(systematics), 0.9, 0.85, "NDCnb")
+        text_box = ROOT.TPaveText(0.65, 0.75-(0.1*len(systematics))*args.scalelegy, 0.9, 0.85, "NDCnb")
         text_box.SetFillColor(0)
         text_box.SetTextFont(42)
         text_box.AddText("Systematic variation")

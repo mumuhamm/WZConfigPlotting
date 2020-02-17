@@ -22,9 +22,15 @@ def getDefaultParser():
     parser.add_argument("-o", "--output_file", type=str, default="",
                         help="Name of file to be created (type pdf/png etc.) " \
                         "Note: Leave unspecified for auto naming")
+    debug = parser.add_mutually_exclusive_group()
+    debug.add_argument("--debug", action='store_true',
+                        help="Print debug info")
+    debug.add_argument("--quiet", action='store_true',
+                        help="Print only warnings info")
     parser.add_argument("--hist_file", type=str, default="",
                         help="Read histograms from file")
-    parser.add_argument("--rebin", type=lambda x: [float(i) for i in x.split(",")], default=0,
+    parser.add_argument("--rebin", type=lambda x: range(*[int(i) for i in x.split(":")]) if \
+                                ":" in x else [float(i) for i in x.split(",")], default=0,
                         help="Rebin (integer)")
     parser.add_argument("--legend_left", action="store_true",
                         help="Put legend left or right")
@@ -73,8 +79,8 @@ def getDefaultParser():
                         help="Do not add ratio comparison")
     parser.add_argument("--no_html", action='store_true',
                         help="Don't copy plot pdfs to website")
-    parser.add_argument("--no_data", action='store_true',
-                        help="Plot only Monte Carlo")
+    parser.add_argument("--data", type=str, default="data",
+                        help="Name of data plot_group, 'none' for just MC")
     parser.add_argument("--no_decorations", action='store_true',
                         help="Don't add CMS plot decorations")
     parser.add_argument("--logy", action='store_true',

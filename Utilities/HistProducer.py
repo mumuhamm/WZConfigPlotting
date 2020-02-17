@@ -10,6 +10,11 @@ class HistProducer(object):
     def __init__(self, weight_info):
         self.weight_info = weight_info 
         self.lumi = 1
+        self.ignoreXsec = False
+
+    # If the xsec has already been accounted for in the scaling
+    def setIgnoreXsec(self, ignore):
+        self.ignoreXsec = ignore 
     
     def getHistScaleFactor(self):
         if self.weight_info.getCrossSection() == 1:
@@ -17,6 +22,8 @@ class HistProducer(object):
         if self.weight_info.getSumOfWeights() <= 0:
             logging.warning("Found non-positive sum of weights! Hist will be scaled only by lumi")
             return self.lumi
+        if self.ignoreXsec:
+            return self.lumi/self.weight_info.getSumOfWeights()
         return self.weight_info.getCrossSection()*self.lumi/self.weight_info.getSumOfWeights()
                         
     def getCrossSection(self):

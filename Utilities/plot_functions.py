@@ -39,14 +39,11 @@ def loadHist(hist, tree, branch_name, cut_string, max_entries, append=False):
         exit(0)
     hist.GetDirectory().cd() 
     hist_name = "".join(["+ " if append else "", hist.GetName()])
-    print "name is %s" % hist_name
     old_num = hist.GetEntries()
     num = tree.Draw(branch_name + ">>" + hist_name, 
             cut_string,
             "",
             max_entries if max_entries > 0 else 1000000000)
-    print "Draw Comand is %s" % branch_name + ">>" + hist_name
-    print "With cut string %s" % cut_string
     if append:
         if num < old_num:
             print "Failed to append to hist"

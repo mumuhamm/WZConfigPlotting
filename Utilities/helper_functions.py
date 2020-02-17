@@ -16,8 +16,6 @@ import math
 import array
 from IPython import embed
 
-#logging.basicConfig(level=logging.DEBUG)
-
 def makePlots(hist_stacks, data_hists, name, args, signal_stacks=[0], errors=[]):
     canvas_dimensions = [800, 800] if "unrolled" not in name else [1200, 800]
     canvas = ROOT.TCanvas("%s_canvas" % name, name, *canvas_dimensions) 
@@ -51,7 +49,7 @@ def makePlots(hist_stacks, data_hists, name, args, signal_stacks=[0], errors=[])
             error_hist.Draw("same e2")
             if signal_stack:
                 signal_stack.Draw("nostack same hist")
-            if not args.no_data:
+            if not args.data == 'none':
                 data_hist.Draw("e0 same")
             error_title = "Stat. unc."
             if "all" in args.uncertainties:
@@ -136,7 +134,7 @@ def makePlot(hist_stack, data_hist, name, args, signal_stack=0, same=""):
         if not "yield" in name.lower():
             data_hist.Sumw2(False)
             data_hist.SetBinErrorOption(ROOT.TH1.kPoisson)
-        #data_hist.Draw("e0 same")
+        data_hist.Draw("e0 same")
     first_stack.GetYaxis().SetTitleSize(hists[0].GetYaxis().GetTitleSize())    
     first_stack.GetYaxis().SetTitleOffset(hists[0].GetYaxis().GetTitleOffset())    
     first_stack.GetYaxis().SetTitle(
@@ -250,7 +248,7 @@ def getHistFactory(config_factory, selection, filelist, luminosity=1, hist_file=
         hist_factory[name].update({"fromFile" : hist_file is not None})
     return hist_factory
 def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, 
-        uncertainties="none", addOverflow=False, rebin=0, cut_string="", removeNegatives=True, noScale=False):
+        uncertainties="none", addOverflow=False, rebin=0, cut_string="", removeNegatives=True, scaleType=False):
     hist_name = "_".join([plot_group, selection.replace("/", "_"), branch_name])
     # TODO: Understand why this is broken in newer ROOT versions
     #rootdir = "gProof" if hasattr(ROOT, "gProof") else "gROOT"
@@ -268,15 +266,18 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
         producer = entry["histProducer"]
         config_factory = entry["configFactory"]
         weight = config_factory.getPlotGroupWeight(plot_group)
+        scale = config_factory.getPlotGroupScale(plot_group)
         if weight != 1 and not entry["fromFile"]:
             producer.addWeight(weight)
         for state in states:
             if entry["fromFile"]:
                 chan = state
                 state_hist_name = str("%s/%s_%s" % (name, branch_name, state))
-                if str(plot_group).lower() == "nonprompt":
-                    state_hist_name = state_hist_name.replace(state, "Fakes_"+state)
-                args = [state_hist_name, addOverflow, rebin, noScale]
+                if "nonprompt" in str(plot_group).lower():
+                    splitName = state_hist_name.rsplit(branch_name, 1)
+                    state_hist_name = ''.join(splitName[:-1] +[branch_name, "_Fakes", splitName[-1]])
+                scaleFac = config_factory.getPlotGroupScale(plot_group)
+                args = [state_hist_name, addOverflow, rebin, scaleType, scale]
             else:
                 chan = state.split("/")[0] if "ntuple" in state else ""
                 config_factory.setProofAliases(chan)
@@ -307,6 +308,7 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
         log_info += "Total number of events: %0.2f\n" % (hist.Integral() if hist and hist.InheritsFrom("TH1") else 0)
         log_info += "Cross section is %0.4f\n" % producer.getCrossSection()
         log_info += "Sum of weights is %0.2f\n" % producer.getSumOfWeights() 
+        log_info += "--> Scaling raw events by %0.4E*(scaleFac=%0.2f)\n" % (producer.getHistScaleFactor(), config_factory.getPlotGroupScale(plot_group))
     logging.debug(log_info)
     logging.debug("Hist has %i entries" % (hist.GetEntries() if hist and hist.InheritsFrom("TH1") else 0) )
     log_info += "*"*80 + "\n"
@@ -324,7 +326,7 @@ def getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, st
     return hist
 
 def getConfigHistFromFile(filename, config_factory, plot_group, selection, branch_name, channels,
-        luminosity=1, addOverflow=False, rebin=0, uncertainties="none", removeNegatives=True, noScale=False):
+        luminosity=1, addOverflow=False, rebin=0, uncertainties="none", removeNegatives=True, scaleType=False):
     try:
         filelist = config_factory.getPlotGroupMembers(plot_group)
     except ValueError as e:
@@ -348,7 +350,7 @@ def getConfigHistFromFile(filename, config_factory, plot_group, selection, branc
 
     bin_info = config_factory.getHistBinInfo(branch_name)
     states = channels.split(",")
-    hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, uncertainties, addOverflow, rebin, noScale=noScale)
+    hist = getConfigHist(hist_factory, branch_name, bin_info, plot_group, selection, states, uncertainties, addOverflow, rebin, scaleType=scaleType)
     config_factory.setHistAttributes(hist, branch_name, plot_group)
 
     return hist
@@ -411,68 +413,6 @@ def appendCut(cut_string, add_cut):
     else:
         return add_cut
 
-def getScaleFactorExpression(state, muonId, electronId):
-    if muonId == "tight" and electronId == "tight":
-        return getScaleFactorExpressionAllTight(state)
-    elif muonId == "medium" and electronId == "tightW":
-        return getScaleFactorExpressionMedTightWElec(state)
-    else:
-        return "1"
-
-def getScaleFactorExpressionMedTightWElec(state):
-    if state == "eee":
-        return "e1MediumIDSF*" \
-                "e2MediumIDSF*" \
-                "e3TightIDSF*" \
-                "pileupSF"
-    elif state == "eem":
-        return "e1MediumIDSF*" \
-                "e2MediumIDSF*" \
-                "mTightIsoSF*" \
-                "mMediumIDSF*" \
-                "pileupSF"
-    elif state == "emm":
-        return "eTightIDSF*" \
-                "m1MediumIDSF*" \
-                "m1TightIsoSF*" \
-                "m2TightIsoSF*" \
-                "m2MediumIDSF*" \
-                "pileupSF"
-    elif state == "mmm":
-        return "m1TightIsoSF*" \
-                "m1MediumIDSF*" \
-                "m2TightIsoSF*" \
-                "m2MediumIDSF*" \
-                "m3TightIsoSF*" \
-                "m3MediumIDSF*" \
-                "pileupSF"
-def getScaleFactorExpressionAllTight(state):
-    if state == "eee":
-        return "e1TightIDSF*" \
-                "e2TightIDSF*" \
-                "e3TightIDSF*" \
-                "pileupSF"
-    elif state == "eem":
-        return "e1TightIDSF*" \
-                "e2TightIDSF*" \
-                "mTightIsoSF*" \
-                "mTightIDSF*" \
-                "pileupSF"
-    elif state == "emm":
-        return "eTightIDSF*" \
-                "m1TightIDSF*" \
-                "m1TightIsoSF*" \
-                "m2TightIsoSF*" \
-                "m2TightIDSF*" \
-                "pileupSF"
-    elif state == "mmm":
-        return "m1TightIsoSF*" \
-                "m1TightIDSF*" \
-                "m2TightIsoSF*" \
-                "m2TightIDSF*" \
-                "m3TightIsoSF*" \
-                "m3TightIDSF*" \
-                "pileupSF"
 def getPlotPaths(selection, folder_name, write_log_file=False):
     if "hep.wisc.edu" in os.environ['HOSTNAME']:
         storage_area = "/nfs_scratch/kdlong"
@@ -480,7 +420,7 @@ def getPlotPaths(selection, folder_name, write_log_file=False):
     else:
         storage_area = "/eos/home-k/%s" % os.environ["USER"]
         html_area = "/afs/cern.ch/user/k/%s/www" % os.environ["USER"]
-    base_dir = "%s/DibosonAnalysisData/PlottingResults" % storage_area
+    base_dir = "%s/PlottingResults" % storage_area
     plot_path = "/".join([base_dir, selection] +
        (['{:%Y-%m-%d}'.format(datetime.datetime.today()),
         '{:%Hh%M}'.format(datetime.datetime.today())] if folder_name == "" \
@@ -491,6 +431,7 @@ def getPlotPaths(selection, folder_name, write_log_file=False):
         makeDirectory(plot_path + "/logs")
     html_path = plot_path.replace(storage_area, html_area)
     return (plot_path, html_path)
+
 def getGenChannelCut(channel):
     cut_string = ""
     if channel == "eem":
@@ -506,6 +447,7 @@ def getGenChannelCut(channel):
     elif channel == "mmm":
         cut_string = "(abs(l1pdgId) == 13 && abs(l2pdgId) == 13 && abs(l3pdgId) == 13)"
     return cut_string
+
 def savePlot(canvas, plot_path, html_path, branch_name, write_log_file, args):
     canvas.Update()
     if args.output_file != "":
