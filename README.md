@@ -1,7 +1,7 @@
 # WZConfigPlotting
 Plotting code for WZ analysis, based on JSON config files
 
-#I order to have CMS-style formatting:
+# In order to have CMS-style formatting:
 
 ```bash
 cd ~
