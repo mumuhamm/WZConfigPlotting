@@ -111,7 +111,7 @@ def makeLogFile(channels, hist_stack, data_hist, signal_stack):
 
 ROOT.gROOT.SetBatch(True)
 path = "/cms/kdlong" if "hep.wisc.edu" in os.environ['HOSTNAME'] else \
-    "/afs/cern.ch/user/k/kelong/work"
+    "/afs/cern.ch/work/m/mumuhamm/WBoson/CMSSW_11_0_0/src/Data_Manager"
 parser = UserInput.getDefaultParser()
 parser.add_argument("-s", "--selection", type=str, required=True,
                     help="Specificy selection level to run over")

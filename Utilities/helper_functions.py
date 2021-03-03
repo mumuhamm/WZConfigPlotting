@@ -417,8 +417,8 @@ def getPlotPaths(selection, folder_name, write_log_file=False):
         storage_area = "/nfs_scratch/kdlong"
         html_area = "/afs/hep.wisc.edu/home/kdlong/public_html"
     else:
-        storage_area = "/eos/user/k/%s" % os.environ["USER"]
-        html_area = "/eos/user/k/%s/www" % os.environ["USER"]
+        storage_area = "/eos/user/m/%s" % os.environ["USER"]
+        html_area = "/eos/user/m/%s/www" % os.environ["USER"]
     base_dir = "%s/PlottingResults" % storage_area
     plot_path = "/".join([base_dir, selection] +
        (['{:%Y-%m-%d}'.format(datetime.datetime.today()),

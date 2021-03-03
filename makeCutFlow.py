@@ -17,7 +17,7 @@ def getMonteCarloStack(cutflow_maker, filelist, unc, scale_facs):
 ROOT.gROOT.SetBatch(True)
 ROOT.TProof.Open('workers=12')
 path = "/cms/kdlong" if "hep.wisc.edu" in os.environ['HOSTNAME'] else \
-    "/afs/cern.ch/user/k/kelong/work"
+    "/afs/cern.ch/work/m/mumuhamm/WBoson/CMSSW_11_0_0/src/Data_Manager"
 parser = UserInput.getDefaultParser()
 args = parser.parse_args()
 cutflow_maker = CutFlowDefinitions.getWZCutFlow(

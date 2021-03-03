@@ -240,7 +240,7 @@ def main():
                     mc_file.write("\nYield for %s in channel %s is %0.3f $pm$ %0.3f" % 
                             (plot_group, chan, integral, error[0]))
             path = "/cms/USER" if "hep.wisc.edu" in os.environ['HOSTNAME'] else \
-                "/afs/cern.ch/user/k/USER/work"
+                "/afs/cern.ch/work/m/mumuhamm/WBoson/CMSSW_11_0_0/src/Data_Manager"
             path = path.replace("USER", os.environ["USER"])
             config_factory = ConfigHistFactory(
                 "%s/AnalysisDatasetManager" % path,
